@@ -41,6 +41,23 @@ public class BoardView: UIView {
         super.init(coder: coder)
         setUp()
     }
+
+    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
+    /// - Parameter side: 数えるディスクの色です。
+    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
+    func countDisks(of side: Disk) -> Int {
+        var count = 0
+
+        for y in yRange {
+            for x in xRange {
+                if diskAt(x: x, y: y) == side {
+                    count +=  1
+                }
+            }
+        }
+
+        return count
+    }
     
     private func setUp() {
         self.backgroundColor = UIColor(named: "DarkColor")!

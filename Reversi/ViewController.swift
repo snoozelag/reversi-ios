@@ -72,29 +72,17 @@ class ViewController: UIViewController {
         changePlayer(side: .light, player: player)
     }
 
-    private func changePlayer(side: Disk, player: Player) {
-        try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
-
-        if let canceller = playerCancellers[side] {
-            canceller.cancel()
-        }
-
-        if !isAnimating, side == turn, case .computer = player {
-            playTurnOfComputer()
-        }
-    }
-
     // MARK: - Views
 
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
-    func updateCountLabels() {
+    private func updateCountLabels() {
         for side in Disk.sides {
-            countLabels[side.index].text = "\(countDisks(of: side))"
+            countLabels[side.index].text = "\(boardView.countDisks(of: side))"
         }
     }
 
     /// 現在の状況に応じてメッセージを表示します。
-    func updateMessageViews() {
+    private func updateMessageViews() {
         if let side = turn {
             messageDiskSizeConstraint.constant = messageDiskSize
             messageDiskView.disk = side
@@ -125,6 +113,19 @@ class ViewController: UIViewController {
             self?.resetGame()
         })
         present(alertController, animated: true)
+    }
+
+    /// 人間、コンピュータを変更
+    private func changePlayer(side: Disk, player: Player) {
+        try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
+
+        if let canceller = playerCancellers[side] {
+            canceller.cancel()
+        }
+
+        if !isAnimating, side == turn, case .computer = player {
+            playTurnOfComputer()
+        }
     }
 
     /// ゲームのリセット
@@ -228,29 +229,12 @@ class ViewController: UIViewController {
 
     // MARK: - Reversi logics
 
-    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
-    /// - Parameter side: 数えるディスクの色です。
-    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
-    private func countDisks(of side: Disk) -> Int {
-        var count = 0
-
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                if boardView.diskAt(x: x, y: y) == side {
-                    count +=  1
-                }
-            }
-        }
-
-        return count
-    }
-
     /// 盤上に置かれたディスクの枚数が多い方の色を返します。
     /// 引き分けの場合は `nil` が返されます。
     /// - Returns: 盤上に置かれたディスクの枚数が多い方の色です。引き分けの場合は `nil` を返します。
     private func sideWithMoreDisks() -> Disk? {
-        let darkCount = countDisks(of: .dark)
-        let lightCount = countDisks(of: .light)
+        let darkCount = boardView.countDisks(of: .dark)
+        let lightCount = boardView.countDisks(of: .light)
         if darkCount == lightCount {
             return nil
         } else {
