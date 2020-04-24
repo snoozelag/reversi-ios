@@ -10,8 +10,8 @@ import Foundation
 
 // MARK: Additional types
 
-enum Player: Int {
-    case manual = 0
+enum PlayerType: Int {
+    case human = 0
     case computer = 1
 }
 

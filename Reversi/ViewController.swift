@@ -7,7 +7,8 @@ class ViewController: UIViewController {
     @IBOutlet private var messageLabel: UILabel!
     @IBOutlet private var darkPlayerControl: UISegmentedControl!
     @IBOutlet private var lightPlayerControl: UISegmentedControl!
-    @IBOutlet private var countLabels: [UILabel]!
+    @IBOutlet private var darkCountLabel: UILabel!
+    @IBOutlet private var lightCountLabel: UILabel!
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
 
     /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
@@ -24,19 +25,14 @@ class ViewController: UIViewController {
         
         do {
             let diskState = try GameIO.loadGame()
-
-            turn = diskState.turn
-            darkPlayerControl.selectedSegmentIndex = diskState.darkControlIndex
-            lightPlayerControl.selectedSegmentIndex = diskState.lightControlIndex
-            diskState.boardStates.forEach({
-                boardView.setDisk($0.disk, atX: $0.x, y: $0.y, animated: false)
-            })
+            setupViews(diskState: diskState)
         } catch _ {
             newGame()
         }
 
-        updateMessageViews(side: .dark)
-        updateCountLabels()
+        updateMessageViews(side: turn)
+        darkCountLabel.text = "\(boardView.countDisks(of: .dark))"
+        lightCountLabel.text = "\(boardView.countDisks(of: .light))"
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -46,6 +42,15 @@ class ViewController: UIViewController {
             viewHasAppeared = true
             waitForPlayer()
         }
+    }
+
+    private func setupViews(diskState: DiskState) {
+        turn = diskState.turn
+        darkPlayerControl.selectedSegmentIndex = diskState.darkControlIndex
+        lightPlayerControl.selectedSegmentIndex = diskState.lightControlIndex
+        diskState.boardStates.forEach({
+            boardView.setDisk($0.disk, atX: $0.x, y: $0.y, animated: false)
+        })
     }
 
     // MARK: - Inputs
@@ -58,23 +63,16 @@ class ViewController: UIViewController {
     }
 
     @IBAction private func darkPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
-        let player = Player(rawValue: sender.selectedSegmentIndex)!
+        let player = PlayerType(rawValue: sender.selectedSegmentIndex)!
         changePlayer(side: .dark, player: player)
     }
 
     @IBAction private func lightPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
-        let player = Player(rawValue: sender.selectedSegmentIndex)!
+        let player = PlayerType(rawValue: sender.selectedSegmentIndex)!
         changePlayer(side: .light, player: player)
     }
 
     // MARK: - Views
-
-    /// 各プレイヤーの獲得したディスクの枚数を表示します。
-    private func updateCountLabels() {
-        for side in Disk.allCases {
-            countLabels[side.index].text = "\(boardView.countDisks(of: side))"
-        }
-    }
 
     /// 現在のターンをメッセージラベルに表示
     private func updateMessageViews(side: Disk) {
@@ -116,8 +114,21 @@ class ViewController: UIViewController {
         present(alertController, animated: true)
     }
 
+    /// パス
+    private func showPassDialog() {
+        let alertController = UIAlertController(
+            title: "Pass",
+            message: "Cannot place a disk.",
+            preferredStyle: .alert
+        )
+        alertController.addAction(UIAlertAction(title: "Dismiss", style: .default) { [weak self] _ in
+            self?.nextTurn()
+        })
+        present(alertController, animated: true)
+    }
+
     /// 人間、コンピュータを変更
-    private func changePlayer(side: Disk, player: Player) {
+    private func changePlayer(side: Disk, player: PlayerType) {
 
         try? GameIO.saveGame(diskState: DiskState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
@@ -154,8 +165,8 @@ class ViewController: UIViewController {
         boardView.reset()
         turn = .dark
 
-        darkPlayerControl.selectedSegmentIndex = Player.manual.rawValue
-        lightPlayerControl.selectedSegmentIndex = Player.manual.rawValue
+        darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
+        lightPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
 
         try? GameIO.saveGame(diskState: DiskState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
@@ -166,8 +177,8 @@ class ViewController: UIViewController {
     /// プレイヤーの行動を待ちます。
     private func waitForPlayer() {
         let playerControl = (turn == .dark) ? darkPlayerControl : lightPlayerControl
-        switch Player(rawValue: playerControl!.selectedSegmentIndex)! {
-        case .manual:
+        switch PlayerType(rawValue: playerControl!.selectedSegmentIndex)! {
+        case .human:
             break
         case .computer:
             playTurnOfComputer()
@@ -186,16 +197,7 @@ class ViewController: UIViewController {
                 updateMessageViewsForGameEnd()
             } else {
                 updateMessageViews(side: turn)
-
-                let alertController = UIAlertController(
-                    title: "Pass",
-                    message: "Cannot place a disk.",
-                    preferredStyle: .alert
-                )
-                alertController.addAction(UIAlertAction(title: "Dismiss", style: .default) { [weak self] _ in
-                    self?.nextTurn()
-                })
-                present(alertController, animated: true)
+                showPassDialog()
             }
         } else {
             updateMessageViews(side: turn)
@@ -286,8 +288,8 @@ class ViewController: UIViewController {
     private func validMoves(for side: Disk) -> [(x: Int, y: Int)] {
         var coordinates: [(Int, Int)] = []
 
-        for y in BoardView.yRange {
-            for x in BoardView.xRange {
+        for y in 0..<BoardView.yCount {
+            for x in 0..<BoardView.xCount {
                 if canPlaceDisk(side, atX: x, y: y) {
                     coordinates.append((x, y))
                 }
@@ -327,7 +329,9 @@ class ViewController: UIViewController {
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
                                                           boardStates: []), boardStateString: self.boardView.getBoardStatesString())
-                self.updateCountLabels()
+
+                self.darkCountLabel.text = "\(self.boardView.countDisks(of: .dark))"
+                self.lightCountLabel.text = "\(self.boardView.countDisks(of: .light))"
             }
         } else {
             DispatchQueue.main.async { [weak self] in
@@ -341,7 +345,9 @@ class ViewController: UIViewController {
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
                                                           boardStates: []), boardStateString: self.boardView.getBoardStatesString())
-                self.updateCountLabels()
+
+                self.darkCountLabel.text = "\(self.boardView.countDisks(of: .dark))"
+                self.lightCountLabel.text = "\(self.boardView.countDisks(of: .light))"
             }
         }
     }
@@ -382,7 +388,7 @@ extension ViewController: BoardViewDelegate {
     func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int) {
         if isAnimating { return }
         let playerControl = (turn == .dark) ? darkPlayerControl : lightPlayerControl
-        guard case .manual = Player(rawValue: playerControl!.selectedSegmentIndex)! else { return }
+        guard case .human = PlayerType(rawValue: playerControl!.selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
         try? placeDisk(turn, atX: x, y: y, animated: true) { [weak self] _ in
             self?.nextTurn()

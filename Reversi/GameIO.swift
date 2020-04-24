@@ -68,7 +68,7 @@ class GameIO {
             let darkPlayerIndex: Int = try {
                 guard let darkPlayerSymbol = line.popFirst(),
                     let darkPlayerNumber = Int(darkPlayerSymbol.description),
-                    let darkPlayer = Player(rawValue: darkPlayerNumber) else {
+                    let darkPlayer = PlayerType(rawValue: darkPlayerNumber) else {
                         throw FileIOError.read(path: path, cause: nil)
                 }
                 return darkPlayer.rawValue
@@ -78,14 +78,14 @@ class GameIO {
             let lightPlayerIndex: Int = try {
                 guard let lightPlayerSymbol = line.popFirst(),
                     let lightPlayerNumber = Int(lightPlayerSymbol.description),
-                    let lightPlayer = Player(rawValue: lightPlayerNumber) else {
+                    let lightPlayer = PlayerType(rawValue: lightPlayerNumber) else {
                         throw FileIOError.read(path: path, cause: nil)
                 }
                 return lightPlayer.rawValue
                 }()
 
 
-            guard lines.count == BoardView.height else {
+            guard lines.count == BoardView.yCount else {
                 throw FileIOError.read(path: path, cause: nil)
             }
 
@@ -99,12 +99,12 @@ class GameIO {
                         result.append(BoardState(disk: disk, x: x, y: y))
                         x += 1
                     }
-                    guard x == BoardView.width else {
+                    guard x == BoardView.xCount else {
                         throw FileIOError.read(path: path, cause: nil)
                     }
                     y += 1
                 }
-                guard y == BoardView.height else {
+                guard y == BoardView.yCount else {
                     throw FileIOError.read(path: path, cause: nil)
                 }
                 return result

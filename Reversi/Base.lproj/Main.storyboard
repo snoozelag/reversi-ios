@@ -182,12 +182,12 @@
                     </view>
                     <connections>
                         <outlet property="boardView" destination="zq8-hK-TyQ" id="7Tx-KA-DlY"/>
+                        <outlet property="darkCountLabel" destination="NGE-KP-oHh" id="GI8-hR-Qnf"/>
                         <outlet property="darkPlayerControl" destination="Nf5-NH-Aql" id="7af-kI-gKd"/>
+                        <outlet property="lightCountLabel" destination="IMh-5o-Uqc" id="BPq-Xl-QOl"/>
                         <outlet property="lightPlayerControl" destination="q90-VO-j8m" id="G0P-qL-jSd"/>
                         <outlet property="messageDiskView" destination="xhS-zB-FaD" id="Cel-dc-EWk"/>
                         <outlet property="messageLabel" destination="nHv-pJ-hrU" id="bqV-9P-ADo"/>
-                        <outletCollection property="countLabels" destination="NGE-KP-oHh" collectionClass="NSMutableArray" id="aJN-mC-RHo"/>
-                        <outletCollection property="countLabels" destination="IMh-5o-Uqc" collectionClass="NSMutableArray" id="XJm-Mh-BhF"/>
                         <outletCollection property="playerActivityIndicators" destination="VTM-mY-aFg" collectionClass="NSMutableArray" id="Ale-OR-NEC"/>
                         <outletCollection property="playerActivityIndicators" destination="ufC-w0-Xwz" collectionClass="NSMutableArray" id="jdu-St-za6"/>
                     </connections>
