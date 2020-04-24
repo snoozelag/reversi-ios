@@ -20,7 +20,7 @@ class ViewController: UIViewController {
     private var messageDiskSize: CGFloat!
 
     /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
-    private var turn: Disk? = .dark
+    private var turn: Disk = .dark
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
     private var playerCancellers: [Disk: Canceller] = [:]
@@ -40,7 +40,7 @@ class ViewController: UIViewController {
             newGame()
         }
 
-        updateMessageViews()
+        updateMessageViews(side: .dark)
         updateCountLabels()
     }
 
@@ -81,21 +81,27 @@ class ViewController: UIViewController {
         }
     }
 
-    /// 現在の状況に応じてメッセージを表示します。
-    private func updateMessageViews() {
-        if let side = turn {
-            messageDiskSizeConstraint.constant = messageDiskSize
-            messageDiskView.disk = side
-            messageLabel.text = "'s turn"
+    /// 現在のターンをメッセージラベルに表示
+    private func updateMessageViews(side: Disk) {
+        messageDiskSizeConstraint.constant = messageDiskSize
+        messageDiskView.disk = side
+        messageLabel.text = "'s turn"
+    }
+
+    /// ゲームの結果をメッセージラベルに表示
+    private func updateMessageViewsForGameEnd() {
+        let darkCount = boardView.countDisks(of: .dark)
+        let lightCount = boardView.countDisks(of: .light)
+        if darkCount == lightCount {
+            // 引き分けを表示
+            messageDiskSizeConstraint.constant = 0
+            messageLabel.text = "Tied"
         } else {
-            if let winner = sideWithMoreDisks() {
-                messageDiskSizeConstraint.constant = messageDiskSize
-                messageDiskView.disk = winner
-                messageLabel.text = " won"
-            } else {
-                messageDiskSizeConstraint.constant = 0
-                messageLabel.text = "Tied"
-            }
+            // 勝者を表示
+            let winner: Disk = (darkCount > lightCount) ? .dark : .light
+            messageDiskSizeConstraint.constant = messageDiskSize
+            messageDiskView.disk = winner
+            messageLabel.text = " won"
         }
     }
 
@@ -159,7 +165,6 @@ class ViewController: UIViewController {
 
     /// プレイヤーの行動を待ちます。
     private func waitForPlayer() {
-        guard let turn = self.turn else { return }
         switch Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! {
         case .manual:
             break
@@ -172,17 +177,14 @@ class ViewController: UIViewController {
     /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     private func nextTurn() {
-        guard var turn = self.turn else { return }
 
         turn.flip()
 
         if validMoves(for: turn).isEmpty {
             if validMoves(for: turn.flipped).isEmpty {
-                self.turn = nil
-                updateMessageViews()
+                updateMessageViewsForGameEnd()
             } else {
-                self.turn = turn
-                updateMessageViews()
+                updateMessageViews(side: turn)
 
                 let alertController = UIAlertController(
                     title: "Pass",
@@ -195,23 +197,21 @@ class ViewController: UIViewController {
                 present(alertController, animated: true)
             }
         } else {
-            self.turn = turn
-            updateMessageViews()
+            updateMessageViews(side: turn)
             waitForPlayer()
         }
     }
 
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     private func playTurnOfComputer() {
-        guard let turn = self.turn else { preconditionFailure() }
         let (x, y) = validMoves(for: turn).randomElement()!
 
         playerActivityIndicators[turn.index].startAnimating()
 
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
-            self.playerActivityIndicators[turn.index].stopAnimating()
-            self.playerCancellers[turn] = nil
+            self.playerActivityIndicators[self.turn.index].stopAnimating()
+            self.playerCancellers[self.turn] = nil
         }
         let canceller = Canceller(cleanUp)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -219,7 +219,7 @@ class ViewController: UIViewController {
             if canceller.isCancelled { return }
             cleanUp()
 
-            try! self.placeDisk(turn, atX: x, y: y, animated: true) { [weak self] _ in
+            try! self.placeDisk(self.turn, atX: x, y: y, animated: true) { [weak self] _ in
                 self?.nextTurn()
             }
         }
@@ -228,19 +228,6 @@ class ViewController: UIViewController {
     }
 
     // MARK: - Reversi logics
-
-    /// 盤上に置かれたディスクの枚数が多い方の色を返します。
-    /// 引き分けの場合は `nil` が返されます。
-    /// - Returns: 盤上に置かれたディスクの枚数が多い方の色です。引き分けの場合は `nil` を返します。
-    private func sideWithMoreDisks() -> Disk? {
-        let darkCount = boardView.countDisks(of: .dark)
-        let lightCount = boardView.countDisks(of: .light)
-        if darkCount == lightCount {
-            return nil
-        } else {
-            return darkCount > lightCount ? .dark : .light
-        }
-    }
 
     private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, atX x: Int, y: Int) -> [(Int, Int)] {
         let directions = [
@@ -386,7 +373,6 @@ extension ViewController: BoardViewDelegate {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int) {
-        guard let turn = turn else { return }
         if isAnimating { return }
         guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs

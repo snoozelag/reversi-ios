@@ -16,7 +16,7 @@ class GameIO {
 
     /// ゲームの状態をファイルに書き出し、保存します。
     /// TODO: 引数はあとで整理する
-    static func saveGame(turn: Disk?, playerControls: [UISegmentedControl], boardView: BoardView) throws {
+    static func saveGame(turn: Disk, playerControls: [UISegmentedControl], boardView: BoardView) throws {
         var output: String = ""
         output += turn.symbol
         for side in Disk.sides {
@@ -24,9 +24,10 @@ class GameIO {
         }
         output += "\n"
 
+        let noneSymbol = "-"
         for y in boardView.yRange {
             for x in boardView.xRange {
-                output += boardView.diskAt(x: x, y: y).symbol
+                output += boardView.diskAt(x: x, y: y)?.symbol ?? noneSymbol
             }
             output += "\n"
         }
@@ -40,10 +41,10 @@ class GameIO {
 
     /// ゲームの状態をファイルから読み込み、復元します。
     static func loadGame(boardView: BoardView, playerControls: [UISegmentedControl]) throws
-        -> (turn: Disk?, playerControls: [UISegmentedControl]) {
+        -> (turn: Disk, playerControls: [UISegmentedControl]) {
 
         // TODO: あとで消す
-        var turn: Disk?
+        var turn: Disk
 
         let input = try String(contentsOfFile: path, encoding: .utf8)
         var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
@@ -55,7 +56,7 @@ class GameIO {
         do { // turn
             guard
                 let diskSymbol = line.popFirst(),
-                let disk = Optional<Disk>(symbol: diskSymbol.description)
+                let disk = Disk(symbol: diskSymbol.description)
             else {
                 throw FileIOError.read(path: path, cause: nil)
             }
@@ -83,7 +84,7 @@ class GameIO {
             while let line = lines.popFirst() {
                 var x = 0
                 for character in line {
-                    let disk = Disk?(symbol: "\(character)").flatMap { $0 }
+                    let disk = Disk(symbol: "\(character)")
                     boardView.setDisk(disk, atX: x, y: y, animated: false)
                     x += 1
                 }
@@ -107,15 +108,14 @@ class GameIO {
 
 }
 
-extension Optional where Wrapped == Disk {
-    fileprivate init?<S: StringProtocol>(symbol: S) {
+extension Disk {
+
+    init?<S: StringProtocol>(symbol: S) {
         switch symbol {
         case "x":
-            self = .some(.dark)
+            self = .dark
         case "o":
-            self = .some(.light)
-        case "-":
-            self = .none
+            self = .light
         default:
             return nil
         }
@@ -123,12 +123,10 @@ extension Optional where Wrapped == Disk {
 
     fileprivate var symbol: String {
         switch self {
-        case .some(.dark):
+        case .dark:
             return "x"
-        case .some(.light):
+        case .light:
             return "o"
-        case .none:
-            return "-"
         }
     }
 }
