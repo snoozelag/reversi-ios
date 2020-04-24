@@ -62,17 +62,24 @@ class ViewController: UIViewController {
         showResetGameDialog()
     }
 
-    /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
-    @IBAction private func changePlayerControlSegment(_ sender: UISegmentedControl) {
-        let side: Disk = Disk(index: playerControls.firstIndex(of: sender)!)
+    @IBAction private func darkPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
+        let player = Player(rawValue: sender.selectedSegmentIndex)!
+        changePlayer(side: .dark, player: player)
+    }
 
+    @IBAction private func lightPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
+        let player = Player(rawValue: sender.selectedSegmentIndex)!
+        changePlayer(side: .light, player: player)
+    }
+
+    private func changePlayer(side: Disk, player: Player) {
         try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
         }
 
-        if !isAnimating, side == turn, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
+        if !isAnimating, side == turn, case .computer = player {
             playTurnOfComputer()
         }
     }
@@ -88,13 +95,12 @@ class ViewController: UIViewController {
 
     /// 現在の状況に応じてメッセージを表示します。
     func updateMessageViews() {
-        switch turn {
-        case .some(let side):
+        if let side = turn {
             messageDiskSizeConstraint.constant = messageDiskSize
             messageDiskView.disk = side
             messageLabel.text = "'s turn"
-        case .none:
-            if let winner = self.sideWithMoreDisks() {
+        } else {
+            if let winner = sideWithMoreDisks() {
                 messageDiskSizeConstraint.constant = messageDiskSize
                 messageDiskView.disk = winner
                 messageLabel.text = " won"

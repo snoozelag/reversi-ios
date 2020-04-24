@@ -76,6 +76,7 @@
                                         </segments>
                                         <connections>
                                             <action selector="changePlayerControlSegment:" destination="BYZ-38-t0r" eventType="valueChanged" id="f7K-Cm-17Z"/>
+                                            <action selector="darkPlayerSegmentedControlValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="USo-1Y-Ai1"/>
                                         </connections>
                                     </segmentedControl>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="NGE-KP-oHh">
@@ -123,6 +124,7 @@
                                         </segments>
                                         <connections>
                                             <action selector="changePlayerControlSegment:" destination="BYZ-38-t0r" eventType="valueChanged" id="9el-1b-nyF"/>
+                                            <action selector="lightPlayerSegmentedControlValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="r8P-Tn-d3K"/>
                                         </connections>
                                     </segmentedControl>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="IMh-5o-Uqc">
