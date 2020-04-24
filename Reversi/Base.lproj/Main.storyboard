@@ -17,34 +17,37 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="NzD-77-9Io" userLabel="Message View">
-                                <rect key="frame" x="149" y="44" width="116.5" height="38.5"/>
+                                <rect key="frame" x="149" y="44" width="116.5" height="24"/>
                                 <subviews>
-                                    <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="xhS-zB-FaD" customClass="DiskView" customModule="Reversi" customModuleProvider="target">
-                                        <rect key="frame" x="0.0" y="7.5" width="24" height="24"/>
-                                        <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
-                                        <constraints>
-                                            <constraint firstAttribute="width" secondItem="xhS-zB-FaD" secondAttribute="height" multiplier="1:1" id="KrS-Cb-Y0n"/>
-                                            <constraint firstAttribute="height" constant="24" id="gHu-Ly-73K"/>
-                                        </constraints>
-                                        <userDefinedRuntimeAttributes>
-                                            <userDefinedRuntimeAttribute type="string" keyPath="name" value="dark"/>
-                                        </userDefinedRuntimeAttributes>
-                                    </view>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="'s turn" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="nHv-pJ-hrU">
-                                        <rect key="frame" x="32" y="0.0" width="84.5" height="38.5"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="32"/>
-                                        <nil key="textColor"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
+                                    <stackView opaque="NO" contentMode="scaleToFill" spacing="8" translatesAutoresizingMaskIntoConstraints="NO" id="QZx-ff-d1P">
+                                        <rect key="frame" x="0.0" y="0.0" width="116.5" height="24"/>
+                                        <subviews>
+                                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="xhS-zB-FaD" customClass="DiskView" customModule="Reversi" customModuleProvider="target">
+                                                <rect key="frame" x="0.0" y="0.0" width="24" height="24"/>
+                                                <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
+                                                <constraints>
+                                                    <constraint firstAttribute="width" secondItem="xhS-zB-FaD" secondAttribute="height" multiplier="1:1" id="KrS-Cb-Y0n"/>
+                                                    <constraint firstAttribute="height" constant="24" id="gHu-Ly-73K"/>
+                                                </constraints>
+                                                <userDefinedRuntimeAttributes>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="name" value="dark"/>
+                                                </userDefinedRuntimeAttributes>
+                                            </view>
+                                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="'s turn" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="nHv-pJ-hrU">
+                                                <rect key="frame" x="32" y="0.0" width="84.5" height="24"/>
+                                                <fontDescription key="fontDescription" type="system" pointSize="32"/>
+                                                <nil key="textColor"/>
+                                                <nil key="highlightedColor"/>
+                                            </label>
+                                        </subviews>
+                                    </stackView>
                                 </subviews>
                                 <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
                                 <constraints>
-                                    <constraint firstAttribute="trailing" secondItem="nHv-pJ-hrU" secondAttribute="trailing" id="69g-vw-mXi"/>
-                                    <constraint firstItem="xhS-zB-FaD" firstAttribute="centerY" secondItem="NzD-77-9Io" secondAttribute="centerY" id="9I5-zt-1GL"/>
-                                    <constraint firstItem="nHv-pJ-hrU" firstAttribute="top" secondItem="NzD-77-9Io" secondAttribute="top" id="DTk-T8-SVU"/>
-                                    <constraint firstItem="nHv-pJ-hrU" firstAttribute="leading" secondItem="xhS-zB-FaD" secondAttribute="trailing" constant="8" id="FcN-eM-6ax"/>
-                                    <constraint firstItem="xhS-zB-FaD" firstAttribute="leading" secondItem="NzD-77-9Io" secondAttribute="leading" id="ODr-iY-4Dh"/>
-                                    <constraint firstAttribute="bottom" secondItem="nHv-pJ-hrU" secondAttribute="bottom" id="yhL-NA-i1w"/>
+                                    <constraint firstItem="QZx-ff-d1P" firstAttribute="leading" secondItem="NzD-77-9Io" secondAttribute="leading" id="Ddu-bH-m39"/>
+                                    <constraint firstAttribute="trailing" secondItem="QZx-ff-d1P" secondAttribute="trailing" id="Nxu-iB-p8m"/>
+                                    <constraint firstAttribute="bottom" secondItem="QZx-ff-d1P" secondAttribute="bottom" id="fgx-Jk-i4G"/>
+                                    <constraint firstItem="QZx-ff-d1P" firstAttribute="top" secondItem="NzD-77-9Io" secondAttribute="top" id="jHy-AR-3a6"/>
                                 </constraints>
                             </view>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="zq8-hK-TyQ" customClass="BoardView" customModule="Reversi" customModuleProvider="target">
@@ -181,7 +184,6 @@
                     </view>
                     <connections>
                         <outlet property="boardView" destination="zq8-hK-TyQ" id="7Tx-KA-DlY"/>
-                        <outlet property="messageDiskSizeConstraint" destination="gHu-Ly-73K" id="52y-fo-Ths"/>
                         <outlet property="messageDiskView" destination="xhS-zB-FaD" id="Cel-dc-EWk"/>
                         <outlet property="messageLabel" destination="nHv-pJ-hrU" id="bqV-9P-ADo"/>
                         <outletCollection property="countLabels" destination="NGE-KP-oHh" collectionClass="NSMutableArray" id="aJN-mC-RHo"/>
