@@ -19,7 +19,7 @@ class GameIO {
     static func saveGame(turn: Disk, playerControls: [UISegmentedControl], boardView: BoardView) throws {
         var output: String = ""
         output += turn.symbol
-        for side in Disk.sides {
+        for side in Disk.allCases {
             output += playerControls[side.index].selectedSegmentIndex.description
         }
         output += "\n"
@@ -64,7 +64,7 @@ class GameIO {
         }
 
         // players
-        for side in Disk.sides {
+        for side in Disk.allCases {
             guard
                 let playerSymbol = line.popFirst(),
                 let playerNumber = Int(playerSymbol.description),

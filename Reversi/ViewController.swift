@@ -65,7 +65,7 @@ class ViewController: UIViewController {
 
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     private func updateCountLabels() {
-        for side in Disk.sides {
+        for side in Disk.allCases {
             countLabels[side.index].text = "\(boardView.countDisks(of: side))"
         }
     }
@@ -129,7 +129,7 @@ class ViewController: UIViewController {
         self.animationCanceller?.cancel()
         self.animationCanceller = nil
 
-        for side in Disk.sides {
+        for side in Disk.allCases {
             self.playerCancellers[side]?.cancel()
             self.playerCancellers.removeValue(forKey: side)
         }

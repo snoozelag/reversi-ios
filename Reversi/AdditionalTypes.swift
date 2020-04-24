@@ -40,7 +40,7 @@ struct DiskPlacementError: Error {
 
 extension Disk {
     init(index: Int) {
-        for side in Disk.sides {
+        for side in Disk.allCases {
             if index == side.index {
                 self = side
                 return
