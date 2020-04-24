@@ -78,7 +78,6 @@
                                             <segment title="Computer"/>
                                         </segments>
                                         <connections>
-                                            <action selector="changePlayerControlSegment:" destination="BYZ-38-t0r" eventType="valueChanged" id="f7K-Cm-17Z"/>
                                             <action selector="darkPlayerSegmentedControlValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="USo-1Y-Ai1"/>
                                         </connections>
                                     </segmentedControl>
@@ -126,7 +125,6 @@
                                             <segment title="Computer"/>
                                         </segments>
                                         <connections>
-                                            <action selector="changePlayerControlSegment:" destination="BYZ-38-t0r" eventType="valueChanged" id="9el-1b-nyF"/>
                                             <action selector="lightPlayerSegmentedControlValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="r8P-Tn-d3K"/>
                                         </connections>
                                     </segmentedControl>
@@ -184,14 +182,14 @@
                     </view>
                     <connections>
                         <outlet property="boardView" destination="zq8-hK-TyQ" id="7Tx-KA-DlY"/>
+                        <outlet property="darkPlayerControl" destination="Nf5-NH-Aql" id="7af-kI-gKd"/>
+                        <outlet property="lightPlayerControl" destination="q90-VO-j8m" id="G0P-qL-jSd"/>
                         <outlet property="messageDiskView" destination="xhS-zB-FaD" id="Cel-dc-EWk"/>
                         <outlet property="messageLabel" destination="nHv-pJ-hrU" id="bqV-9P-ADo"/>
                         <outletCollection property="countLabels" destination="NGE-KP-oHh" collectionClass="NSMutableArray" id="aJN-mC-RHo"/>
                         <outletCollection property="countLabels" destination="IMh-5o-Uqc" collectionClass="NSMutableArray" id="XJm-Mh-BhF"/>
                         <outletCollection property="playerActivityIndicators" destination="VTM-mY-aFg" collectionClass="NSMutableArray" id="Ale-OR-NEC"/>
                         <outletCollection property="playerActivityIndicators" destination="ufC-w0-Xwz" collectionClass="NSMutableArray" id="jdu-St-za6"/>
-                        <outletCollection property="playerControls" destination="Nf5-NH-Aql" collectionClass="NSMutableArray" id="Ck1-BI-rSv"/>
-                        <outletCollection property="playerControls" destination="q90-VO-j8m" collectionClass="NSMutableArray" id="RQh-tl-TQr"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

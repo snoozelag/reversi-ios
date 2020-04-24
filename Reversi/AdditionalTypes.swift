@@ -36,23 +36,4 @@ struct DiskPlacementError: Error {
     let y: Int
 }
 
-// MARK: File-private extensions
 
-extension Disk {
-    init(index: Int) {
-        for side in Disk.allCases {
-            if index == side.index {
-                self = side
-                return
-            }
-        }
-        preconditionFailure("Illegal index: \(index)")
-    }
-
-    var index: Int {
-        switch self {
-        case .dark: return 0
-        case .light: return 1
-        }
-    }
-}

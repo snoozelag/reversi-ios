@@ -5,7 +5,8 @@ class ViewController: UIViewController {
     @IBOutlet private var boardView: BoardView!
     @IBOutlet private var messageDiskView: DiskView!
     @IBOutlet private var messageLabel: UILabel!
-    @IBOutlet private var playerControls: [UISegmentedControl]!
+    @IBOutlet private var darkPlayerControl: UISegmentedControl!
+    @IBOutlet private var lightPlayerControl: UISegmentedControl!
     @IBOutlet private var countLabels: [UILabel]!
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
 
@@ -22,9 +23,14 @@ class ViewController: UIViewController {
         boardView.delegate = self
         
         do {
-            let loadedGame = try GameIO.loadGame(boardView: boardView, playerControls: playerControls)
-            self.turn = loadedGame.turn
-            self.playerControls = loadedGame.playerControls
+            let diskState = try GameIO.loadGame()
+
+            turn = diskState.turn
+            darkPlayerControl.selectedSegmentIndex = diskState.darkControlIndex
+            lightPlayerControl.selectedSegmentIndex = diskState.lightControlIndex
+            diskState.boardStates.forEach({
+                boardView.setDisk($0.disk, atX: $0.x, y: $0.y, animated: false)
+            })
         } catch _ {
             newGame()
         }
@@ -112,7 +118,11 @@ class ViewController: UIViewController {
 
     /// 人間、コンピュータを変更
     private func changePlayer(side: Disk, player: Player) {
-        try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
+
+        try? GameIO.saveGame(diskState: DiskState(turn: turn,
+                                                  darkControlIndex: darkPlayerControl.selectedSegmentIndex,
+                                                  lightControlIndex: lightPlayerControl.selectedSegmentIndex,
+                                                  boardStates: []), boardStateString: boardView.getBoardStatesString())
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
@@ -125,17 +135,16 @@ class ViewController: UIViewController {
 
     /// ゲームのリセット
     private func resetGame() {
-
-        self.animationCanceller?.cancel()
-        self.animationCanceller = nil
+        animationCanceller?.cancel()
+        animationCanceller = nil
 
         for side in Disk.allCases {
-            self.playerCancellers[side]?.cancel()
-            self.playerCancellers.removeValue(forKey: side)
+            playerCancellers[side]?.cancel()
+            playerCancellers.removeValue(forKey: side)
         }
 
-        self.newGame()
-        self.waitForPlayer()
+        newGame()
+        waitForPlayer()
     }
 
     // MARK: Game management
@@ -145,16 +154,19 @@ class ViewController: UIViewController {
         boardView.reset()
         turn = .dark
 
-        for playerControl in playerControls {
-            playerControl.selectedSegmentIndex = Player.manual.rawValue
-        }
+        darkPlayerControl.selectedSegmentIndex = Player.manual.rawValue
+        lightPlayerControl.selectedSegmentIndex = Player.manual.rawValue
 
-        try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
+        try? GameIO.saveGame(diskState: DiskState(turn: turn,
+                                                  darkControlIndex: darkPlayerControl.selectedSegmentIndex,
+                                                  lightControlIndex: lightPlayerControl.selectedSegmentIndex,
+                                                  boardStates: []), boardStateString: boardView.getBoardStatesString())
     }
 
     /// プレイヤーの行動を待ちます。
     private func waitForPlayer() {
-        switch Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! {
+        let playerControl = (turn == .dark) ? darkPlayerControl : lightPlayerControl
+        switch Player(rawValue: playerControl!.selectedSegmentIndex)! {
         case .manual:
             break
         case .computer:
@@ -274,8 +286,8 @@ class ViewController: UIViewController {
     private func validMoves(for side: Disk) -> [(x: Int, y: Int)] {
         var coordinates: [(Int, Int)] = []
 
-        for y in boardView.yRange {
-            for x in boardView.xRange {
+        for y in BoardView.yRange {
+            for x in BoardView.xRange {
                 if canPlaceDisk(side, atX: x, y: y) {
                     coordinates.append((x, y))
                 }
@@ -311,7 +323,10 @@ class ViewController: UIViewController {
                 cleanUp()
 
                 completion?(isFinished)
-                try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
+                try? GameIO.saveGame(diskState: DiskState(turn: self.turn,
+                                                          darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
+                                                          lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
+                                                          boardStates: []), boardStateString: self.boardView.getBoardStatesString())
                 self.updateCountLabels()
             }
         } else {
@@ -322,7 +337,10 @@ class ViewController: UIViewController {
                     self.boardView.setDisk(disk, atX: x, y: y, animated: false)
                 }
                 completion?(true)
-                try? GameIO.saveGame(turn: self.turn, playerControls: self.playerControls, boardView: self.boardView)
+                try? GameIO.saveGame(diskState: DiskState(turn: self.turn,
+                                                          darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
+                                                          lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
+                                                          boardStates: []), boardStateString: self.boardView.getBoardStatesString())
                 self.updateCountLabels()
             }
         }
@@ -363,7 +381,8 @@ extension ViewController: BoardViewDelegate {
     /// - Parameter y: セルの行です。
     func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int) {
         if isAnimating { return }
-        guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
+        let playerControl = (turn == .dark) ? darkPlayerControl : lightPlayerControl
+        guard case .manual = Player(rawValue: playerControl!.selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
         try? placeDisk(turn, atX: x, y: y, animated: true) { [weak self] _ in
             self?.nextTurn()

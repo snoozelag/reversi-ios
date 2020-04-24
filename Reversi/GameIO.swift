@@ -8,7 +8,23 @@
 
 import UIKit
 
+struct DiskState {
+    var turn: Disk = .dark
+    var darkControlIndex: Int = 0
+    var lightControlIndex: Int = 0
+    var boardStates = [BoardState]()
+}
+
+struct BoardState {
+     var disk: Disk?
+     var x: Int
+     var y: Int
+ }
+
 class GameIO {
+
+    static let darkSymbol = "x"
+    static let lightSymbol = "o"
 
     private static var path: String {
         (NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first! as NSString).appendingPathComponent("Game")
@@ -16,21 +32,13 @@ class GameIO {
 
     /// ゲームの状態をファイルに書き出し、保存します。
     /// TODO: 引数はあとで整理する
-    static func saveGame(turn: Disk, playerControls: [UISegmentedControl], boardView: BoardView) throws {
+    static func saveGame(diskState: DiskState, boardStateString: String) throws {
         var output: String = ""
-        output += turn.symbol
-        for side in Disk.allCases {
-            output += playerControls[side.index].selectedSegmentIndex.description
-        }
+        output += (diskState.turn == .dark) ? darkSymbol : lightSymbol
+        output += String(diskState.darkControlIndex)
+        output += String(diskState.lightControlIndex)
         output += "\n"
-
-        let noneSymbol = "-"
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                output += boardView.diskAt(x: x, y: y)?.symbol ?? noneSymbol
-            }
-            output += "\n"
-        }
+        output += boardStateString
 
         do {
             try output.write(toFile: path, atomically: true, encoding: .utf8)
@@ -40,65 +48,69 @@ class GameIO {
     }
 
     /// ゲームの状態をファイルから読み込み、復元します。
-    static func loadGame(boardView: BoardView, playerControls: [UISegmentedControl]) throws
-        -> (turn: Disk, playerControls: [UISegmentedControl]) {
+    static func loadGame() throws
+        -> DiskState {
 
-        // TODO: あとで消す
-        var turn: Disk
+            let input = try String(contentsOfFile: path, encoding: .utf8)
+            var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
 
-        let input = try String(contentsOfFile: path, encoding: .utf8)
-        var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
-
-        guard var line = lines.popFirst() else {
-            throw FileIOError.read(path: path, cause: nil)
-        }
-
-        do { // turn
-            guard
-                let diskSymbol = line.popFirst(),
-                let disk = Disk(symbol: diskSymbol.description)
-            else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            turn = disk
-        }
-
-        // players
-        for side in Disk.allCases {
-            guard
-                let playerSymbol = line.popFirst(),
-                let playerNumber = Int(playerSymbol.description),
-                let player = Player(rawValue: playerNumber)
-            else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            playerControls[side.index].selectedSegmentIndex = player.rawValue
-        }
-
-        do { // board
-            guard lines.count == boardView.height else {
+            guard var line = lines.popFirst() else {
                 throw FileIOError.read(path: path, cause: nil)
             }
 
-            var y = 0
-            while let line = lines.popFirst() {
-                var x = 0
-                for character in line {
-                    let disk = Disk(symbol: "\(character)")
-                    boardView.setDisk(disk, atX: x, y: y, animated: false)
-                    x += 1
-                }
-                guard x == boardView.width else {
+            let turn: Disk = try {
+                guard let diskSymbol = line.popFirst(), let disk = Disk(symbol: diskSymbol.description) else {
                     throw FileIOError.read(path: path, cause: nil)
                 }
-                y += 1
-            }
-            guard y == boardView.height else {
+                return disk
+                }()
+
+            let darkPlayerIndex: Int = try {
+                guard let darkPlayerSymbol = line.popFirst(),
+                    let darkPlayerNumber = Int(darkPlayerSymbol.description),
+                    let darkPlayer = Player(rawValue: darkPlayerNumber) else {
+                        throw FileIOError.read(path: path, cause: nil)
+                }
+                return darkPlayer.rawValue
+                }()
+
+
+            let lightPlayerIndex: Int = try {
+                guard let lightPlayerSymbol = line.popFirst(),
+                    let lightPlayerNumber = Int(lightPlayerSymbol.description),
+                    let lightPlayer = Player(rawValue: lightPlayerNumber) else {
+                        throw FileIOError.read(path: path, cause: nil)
+                }
+                return lightPlayer.rawValue
+                }()
+
+
+            guard lines.count == BoardView.height else {
                 throw FileIOError.read(path: path, cause: nil)
             }
-        }
 
-        return (turn, playerControls)
+            let boardStates: [BoardState] = try {
+                var result = [BoardState]()
+                var y = 0
+                while let line = lines.popFirst() {
+                    var x = 0
+                    for character in line {
+                        let disk = Disk(symbol: "\(character)")
+                        result.append(BoardState(disk: disk, x: x, y: y))
+                        x += 1
+                    }
+                    guard x == BoardView.width else {
+                        throw FileIOError.read(path: path, cause: nil)
+                    }
+                    y += 1
+                }
+                guard y == BoardView.height else {
+                    throw FileIOError.read(path: path, cause: nil)
+                }
+                return result
+            }()
+
+            return DiskState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
     }
 
     enum FileIOError: Error {
@@ -107,6 +119,8 @@ class GameIO {
     }
 
 }
+
+// MARK: File-private extensions
 
 extension Disk {
 
@@ -121,12 +135,20 @@ extension Disk {
         }
     }
 
-    fileprivate var symbol: String {
+    init(index: Int) {
+        for side in Disk.allCases {
+            if index == side.index {
+                self = side
+                return
+            }
+        }
+        preconditionFailure("Illegal index: \(index)")
+    }
+
+    var index: Int {
         switch self {
-        case .dark:
-            return "x"
-        case .light:
-            return "o"
+        case .dark: return 0
+        case .light: return 1
         }
     }
 }
