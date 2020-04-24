@@ -7,7 +7,7 @@ public class CellView: UIView {
     private let diskView: DiskView = DiskView()
     
     private var _disk: Disk?
-    public var disk: Disk? {
+    var disk: Disk? {
         get { _disk }
         set { setDisk(newValue, animated: true) }
     }
@@ -71,7 +71,7 @@ public class CellView: UIView {
         diskView.alpha = _disk == nil ? 0.0 : 1.0
     }
     
-    public func setDisk(_ disk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+    func setDisk(_ disk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
         let diskBefore: Disk? = _disk
         _disk = disk
         let diskAfter: Disk? = _disk

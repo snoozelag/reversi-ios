@@ -67,7 +67,7 @@ class GameIO {
             guard
                 let playerSymbol = line.popFirst(),
                 let playerNumber = Int(playerSymbol.description),
-                let player = ViewController.Player(rawValue: playerNumber)
+                let player = Player(rawValue: playerNumber)
             else {
                 throw FileIOError.read(path: path, cause: nil)
             }

@@ -1,34 +1,41 @@
 import UIKit
 
-private let lineWidth: CGFloat = 2
+public protocol BoardViewDelegate: AnyObject {
+    /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます。
+    /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
+    /// - Parameter x: セルの列です。
+    /// - Parameter y: セルの行です。
+    func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int)
+}
 
 public class BoardView: UIView {
-    private var cellViews: [CellView] = []
-    private var actions: [CellSelectionAction] = []
+
+    private var cellViews = [CellView]()
+    private var actions = [CellSelectionAction]()
     
     /// 盤の幅（ `8` ）を表します。
-    public let width: Int = 8
+    let width: Int = 8
     
     /// 盤の高さ（ `8` ）を返します。
-    public let height: Int = 8
+    let height: Int = 8
     
     /// 盤のセルの `x` の範囲（ `0 ..< 8` ）を返します。
-    public let xRange: Range<Int>
+    let xRange: Range<Int>
     
     /// 盤のセルの `y` の範囲（ `0 ..< 8` ）を返します。
-    public let yRange: Range<Int>
+    let yRange: Range<Int>
     
     /// セルがタップされたときの挙動を移譲するためのオブジェクトです。
-    public weak var delegate: BoardViewDelegate?
+    weak var delegate: BoardViewDelegate?
     
-    override public init(frame: CGRect) {
+    override init(frame: CGRect) {
         xRange = 0 ..< width
         yRange = 0 ..< height
         super.init(frame: frame)
         setUp()
     }
     
-    required public init?(coder: NSCoder) {
+    required init?(coder: NSCoder) {
         xRange = 0 ..< width
         yRange = 0 ..< height
         super.init(coder: coder)
@@ -72,7 +79,8 @@ public class BoardView: UIView {
                 } else {
                     leftNeighborAnchor = self.leftAnchor
                 }
-                
+
+                let lineWidth: CGFloat = 2
                 let cellView = cellViewAt(x: x, y: y)!
                 NSLayoutConstraint.activate([
                     cellView.topAnchor.constraint(equalTo: topNeighborAnchor, constant: lineWidth),
@@ -128,7 +136,7 @@ public class BoardView: UIView {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     /// - Returns: セルにディスクが置かれている場合はそのディスクの値を、置かれていない場合は `nil` を返します。
-    public func diskAt(x: Int, y: Int) -> Disk? {
+    func diskAt(x: Int, y: Int) -> Disk? {
         cellViewAt(x: x, y: y)?.disk
     }
     
@@ -142,20 +150,12 @@ public class BoardView: UIView {
     /// - Parameter completion: アニメーションの完了通知を受け取るハンドラーです。
     ///     `animated` に `false` が指定された場合は状態が変更された後で即座に同期的に呼び出されます。
     ///     ハンドラーが受け取る `Bool` 値は、 `UIView.animate()`  等に準じます。
-    public func setDisk(_ disk: Disk?, atX x: Int, y: Int, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+    func setDisk(_ disk: Disk?, atX x: Int, y: Int, animated: Bool, completion: ((Bool) -> Void)? = nil) {
         guard let cellView = cellViewAt(x: x, y: y) else {
             preconditionFailure() // FIXME: Add a message.
         }
         cellView.setDisk(disk, animated: animated, completion: completion)
     }
-}
-
-public protocol BoardViewDelegate: AnyObject {
-    /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます。
-    /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int)
 }
 
 private class CellSelectionAction: NSObject {
