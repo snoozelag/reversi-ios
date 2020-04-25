@@ -10,20 +10,17 @@ protocol BoardViewDelegate: AnyObject {
 
 public class BoardView: UIView {
 
+    weak var delegate: BoardViewDelegate?
+
     private var cellViews = [CellView]()
     private var actions = [CellSelectionAction]()
-    private var boardDisks: [[Disk?]] = {
-        return Array<[Disk?]>(repeating: Array<Disk?>(repeating: nil, count: xCount), count: yCount)
-    }()
     
     /// 盤の幅（ `8` ）を表します。
     static let xCount: Int = 8
     
     /// 盤の高さ（ `8` ）を返します。
     static let yCount: Int = 8
-    
-    /// セルがタップされたときの挙動を移譲するためのオブジェクトです。
-    weak var delegate: BoardViewDelegate?
+
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -76,19 +73,23 @@ public class BoardView: UIView {
         
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
-                let topNeighborAnchor: NSLayoutYAxisAnchor
-                if let cellView = cellViewAt(DiskCoordinate(x: x, y: y - 1)) {
-                    topNeighborAnchor = cellView.bottomAnchor
-                } else {
-                    topNeighborAnchor = self.topAnchor
-                }
-                
-                let leftNeighborAnchor: NSLayoutXAxisAnchor
-                if let cellView = cellViewAt(DiskCoordinate(x: x - 1, y: y)) {
-                    leftNeighborAnchor = cellView.rightAnchor
-                } else {
-                    leftNeighborAnchor = self.leftAnchor
-                }
+
+                let topNeighborAnchor: NSLayoutYAxisAnchor = {
+                    if let cellView = cellViewAt(DiskCoordinate(x: x, y: y - 1)) {
+                        return cellView.bottomAnchor
+                    } else {
+                        return topAnchor
+                    }
+                }()
+
+                let leftNeighborAnchor: NSLayoutXAxisAnchor = {
+                    if let cellView = cellViewAt(DiskCoordinate(x: x - 1, y: y)) {
+                        return cellView.rightAnchor
+                    } else {
+                        return leftAnchor
+                    }
+                }()
+
 
                 let lineWidth: CGFloat = 2
                 let cellView = cellViewAt(DiskCoordinate(x: x, y: y))!
@@ -115,7 +116,7 @@ public class BoardView: UIView {
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
                 let coordinate = DiskCoordinate(x: x, y: y)
-                let cellView: CellView = cellViewAt(coordinate)!
+                let cellView = cellViewAt(coordinate)!
                 let action = CellSelectionAction(boardView: self, coordinate: coordinate)
                 actions.append(action) // To retain the `action`
                 cellView.addTarget(action, action: #selector(action.selectCell), for: .touchUpInside)

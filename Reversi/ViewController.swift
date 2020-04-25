@@ -264,7 +264,8 @@ class ViewController: UIViewController {
                 x += direction.x
                 y += direction.y
 
-                switch (disk, boardView.diskAt(DiskCoordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
+                let diskAtCoordinate = boardView.diskAt(DiskCoordinate(x: x, y: y))
+                switch (disk, diskAtCoordinate) { // Uses tuples to make patterns exhaustive
                 case (.dark, .some(.dark)), (.light, .some(.light)):
                     diskCoordinates.append(contentsOf: diskCoordinatesInLine)
                     break flipping
