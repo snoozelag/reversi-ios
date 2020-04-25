@@ -1,11 +1,11 @@
 import UIKit
 
-public protocol BoardViewDelegate: AnyObject {
+protocol BoardViewDelegate: AnyObject {
     /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます。
     /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
-    func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int)
+    func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate)
 }
 
 public class BoardView: UIView {
@@ -43,7 +43,7 @@ public class BoardView: UIView {
 
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
-                if diskAt(x: x, y: y) == side {
+                if diskAt(DiskCoordinate(x: x, y: y)) == side {
                     count +=  1
                 }
             }
@@ -77,21 +77,21 @@ public class BoardView: UIView {
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
                 let topNeighborAnchor: NSLayoutYAxisAnchor
-                if let cellView = cellViewAt(x: x, y: y - 1) {
+                if let cellView = cellViewAt(DiskCoordinate(x: x, y: y - 1)) {
                     topNeighborAnchor = cellView.bottomAnchor
                 } else {
                     topNeighborAnchor = self.topAnchor
                 }
                 
                 let leftNeighborAnchor: NSLayoutXAxisAnchor
-                if let cellView = cellViewAt(x: x - 1, y: y) {
+                if let cellView = cellViewAt(DiskCoordinate(x: x - 1, y: y)) {
                     leftNeighborAnchor = cellView.rightAnchor
                 } else {
                     leftNeighborAnchor = self.leftAnchor
                 }
 
                 let lineWidth: CGFloat = 2
-                let cellView = cellViewAt(x: x, y: y)!
+                let cellView = cellViewAt(DiskCoordinate(x: x, y: y))!
                 NSLayoutConstraint.activate([
                     cellView.topAnchor.constraint(equalTo: topNeighborAnchor, constant: lineWidth),
                     cellView.leftAnchor.constraint(equalTo: leftNeighborAnchor, constant: lineWidth),
@@ -114,8 +114,9 @@ public class BoardView: UIView {
         
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
-                let cellView: CellView = cellViewAt(x: x, y: y)!
-                let action = CellSelectionAction(boardView: self, x: x, y: y)
+                let coordinate = DiskCoordinate(x: x, y: y)
+                let cellView: CellView = cellViewAt(coordinate)!
+                let action = CellSelectionAction(boardView: self, coordinate: coordinate)
                 actions.append(action) // To retain the `action`
                 cellView.addTarget(action, action: #selector(action.selectCell), for: .touchUpInside)
             }
@@ -126,19 +127,19 @@ public class BoardView: UIView {
     public func reset() {
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
-                setDisk(nil, atX: x, y: y, animated: false)
+                setDisk(nil, at: DiskCoordinate(x: x, y: y), animated: false)
             }
         }
         
-        setDisk(.light, atX: Self.xCount / 2 - 1, y: Self.yCount / 2 - 1, animated: false)
-        setDisk(.dark, atX: Self.xCount / 2, y: Self.yCount / 2 - 1, animated: false)
-        setDisk(.dark, atX: Self.xCount / 2 - 1, y: Self.yCount / 2, animated: false)
-        setDisk(.light, atX: Self.xCount / 2, y: Self.yCount / 2, animated: false)
+        setDisk(.light, at: DiskCoordinate(x: Self.xCount / 2 - 1, y: Self.yCount / 2 - 1), animated: false)
+        setDisk(.dark, at: DiskCoordinate(x: Self.xCount / 2, y: Self.yCount / 2 - 1), animated: false)
+        setDisk(.dark, at: DiskCoordinate(x: Self.xCount / 2 - 1, y: Self.yCount / 2), animated: false)
+        setDisk(.light, at: DiskCoordinate(x: Self.xCount / 2, y: Self.yCount / 2), animated: false)
     }
     
-    private func cellViewAt(x: Int, y: Int) -> CellView? {
-        guard (0..<Self.xCount).contains(x) && (0..<Self.yCount).contains(y) else { return nil }
-        return cellViews[y * Self.xCount + x]
+    private func cellViewAt(_ coordinate: DiskCoordinate) -> CellView? {
+        guard (0..<Self.xCount).contains(coordinate.x) && (0..<Self.yCount).contains(coordinate.y) else { return nil }
+        return cellViews[coordinate.y * Self.xCount + coordinate.x]
     }
     
     /// `x`, `y` で指定されたセルの状態を返します。
@@ -146,8 +147,8 @@ public class BoardView: UIView {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     /// - Returns: セルにディスクが置かれている場合はそのディスクの値を、置かれていない場合は `nil` を返します。
-    func diskAt(x: Int, y: Int) -> Disk? {
-        cellViewAt(x: x, y: y)?.disk
+    func diskAt(_ coordinate: DiskCoordinate) -> Disk? {
+        cellViewAt(coordinate)?.disk
     }
     
     /// `x`, `y` で指定されたセルの状態を、与えられた `disk` に変更します。
@@ -160,8 +161,8 @@ public class BoardView: UIView {
     /// - Parameter completion: アニメーションの完了通知を受け取るハンドラーです。
     ///     `animated` に `false` が指定された場合は状態が変更された後で即座に同期的に呼び出されます。
     ///     ハンドラーが受け取る `Bool` 値は、 `UIView.animate()`  等に準じます。
-    func setDisk(_ disk: Disk?, atX x: Int, y: Int, animated: Bool, completion: ((Bool) -> Void)? = nil) {
-        guard let cellView = cellViewAt(x: x, y: y) else {
+    func setDisk(_ disk: Disk?, at coordinate: DiskCoordinate, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+        guard let cellView = cellViewAt(coordinate) else {
             preconditionFailure() // FIXME: Add a message.
         }
         cellView.setDisk(disk, animated: animated, completion: completion)
@@ -171,7 +172,7 @@ public class BoardView: UIView {
         var output = ""
         for y in 0..<Self.yCount {
             for x in 0..<Self.xCount {
-                if let side = diskAt(x: x, y: y) {
+                if let side = diskAt(DiskCoordinate(x: x, y: y)) {
                     output += (side == .dark) ? GameIO.darkSymbol : GameIO.lightSymbol
                 } else {
                     let noneSymbol = "-"
@@ -186,17 +187,15 @@ public class BoardView: UIView {
 
 private class CellSelectionAction: NSObject {
     private weak var boardView: BoardView?
-    let x: Int
-    let y: Int
+    let coordinate: DiskCoordinate
     
-    init(boardView: BoardView, x: Int, y: Int) {
+    init(boardView: BoardView, coordinate: DiskCoordinate) {
         self.boardView = boardView
-        self.x = x
-        self.y = y
+        self.coordinate = coordinate
     }
     
     @objc func selectCell() {
         guard let boardView = boardView else { return }
-        boardView.delegate?.boardView(boardView, didSelectCellAtX: x, y: y)
+        boardView.delegate?.boardView(boardView, didSelectCellAt: coordinate)
     }
 }

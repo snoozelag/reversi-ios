@@ -32,8 +32,7 @@ final class Canceller {
 
 struct DiskPlacementError: Error {
     let disk: Disk
-    let x: Int
-    let y: Int
+    let coordinate: DiskCoordinate
 }
 
 

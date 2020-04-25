@@ -16,10 +16,9 @@ struct DiskState {
 }
 
 struct BoardState {
-     var disk: Disk?
-     var x: Int
-     var y: Int
- }
+    var disk: Disk?
+    var coordinate: DiskCoordinate
+}
 
 class GameIO {
 
@@ -96,7 +95,7 @@ class GameIO {
                     var x = 0
                     for character in line {
                         let disk = Disk(symbol: "\(character)")
-                        result.append(BoardState(disk: disk, x: x, y: y))
+                        result.append(BoardState(disk: disk, coordinate: DiskCoordinate(x: x, y: y)))
                         x += 1
                     }
                     guard x == BoardView.xCount else {
