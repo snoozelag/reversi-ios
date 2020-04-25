@@ -78,15 +78,9 @@ class GameIO {
                 throw FileIOError.read(path: path, cause: nil)
             }
 
-            let turn: Disk = try {
-                guard let diskSymbol = line.popFirst(), let disk = Disk(symbol: diskSymbol.description) else {
-                    throw FileIOError.read(path: path, cause: nil)
-                }
-                return disk
-            }()
-
-            let darkPlayerIndex = try playerTypeForSymbol(line.popFirst()).rawValue
-            let lightPlayerIndex = try playerTypeForSymbol(line.popFirst()).rawValue
+            let turn: Disk = try diskForSymbol(line.popFirst().flatMap(String.init))
+            let darkPlayerIndex = try playerTypeForSymbol(line.popFirst().flatMap(String.init)).rawValue
+            let lightPlayerIndex = try playerTypeForSymbol(line.popFirst().flatMap(String.init)).rawValue
 
             guard lines.count == BoardView.yCount else {
                 throw FileIOError.read(path: path, cause: nil)
@@ -120,13 +114,20 @@ class GameIO {
             return DiskState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
     }
 
-    private static func playerTypeForSymbol(_ playerSymbol: Substring.Element?) throws -> PlayerType {
+    private static func playerTypeForSymbol(_ playerSymbol: String?) throws -> PlayerType {
         guard let playerSymbol = playerSymbol,
             let playerNumber = Int(playerSymbol.description),
             let playerType = PlayerType(rawValue: playerNumber) else {
                 throw FileIOError.read(path: path, cause: nil)
         }
         return playerType
+    }
+
+    private static func diskForSymbol(_ diskSymbol: String?) throws -> Disk {
+        guard let diskSymbol = diskSymbol, let disk = Disk(symbol: diskSymbol) else {
+            throw FileIOError.read(path: path, cause: nil)
+        }
+        return disk
     }
 
     enum FileIOError: Error {
@@ -152,13 +153,14 @@ extension Disk {
     }
 
     init(index: Int) {
-        for side in Disk.allCases {
-            if index == side.index {
-                self = side
-                return
-            }
+        switch index {
+        case 0:
+            self = .dark
+        case 1:
+            self = .light
+        default:
+            preconditionFailure("Illegal index: \(index)")
         }
-        preconditionFailure("Illegal index: \(index)")
     }
 
     var index: Int {

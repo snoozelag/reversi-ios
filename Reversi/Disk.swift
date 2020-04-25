@@ -1,4 +1,4 @@
-enum Disk: CaseIterable {
+enum Disk: Int, CaseIterable {
     case dark
     case light
 }

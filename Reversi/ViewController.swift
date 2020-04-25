@@ -216,11 +216,11 @@ class ViewController: UIViewController {
     private func playTurnOfComputer() {
         let coordinate = validMoves(for: turn).randomElement()!
 
-        playerActivityIndicators[turn.index].startAnimating()
+        playerActivityIndicators[turn.rawValue].startAnimating()
 
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
-            self.playerActivityIndicators[self.turn.index].stopAnimating()
+            self.playerActivityIndicators[self.turn.rawValue].stopAnimating()
             self.playerCancellers[self.turn] = nil
         }
         let canceller = Canceller(cleanUp)
