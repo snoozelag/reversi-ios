@@ -53,8 +53,10 @@ class ViewController: UIViewController {
         turn = diskState.turn
         darkPlayerControl.selectedSegmentIndex = diskState.darkControlIndex
         lightPlayerControl.selectedSegmentIndex = diskState.lightControlIndex
-        diskState.boardStates.forEach({
-            boardView.setDisk($0.disk, at: $0.coordinate, animated: false)
+        diskState.boardStates.forEach({ boardStatesInLine in
+            boardStatesInLine.forEach({
+                boardView.setDisk($0.disk, at: $0.coordinate, animated: false)
+            })
         })
     }
 
@@ -138,7 +140,7 @@ class ViewController: UIViewController {
         try? GameIO.saveGame(diskState: DiskState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
                                                   lightControlIndex: lightPlayerControl.selectedSegmentIndex,
-                                                  boardStates: []), boardStateString: boardView.getBoardStatesString())
+                                                  boardStates: boardView.getBoardStates()))
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
@@ -176,7 +178,7 @@ class ViewController: UIViewController {
         try? GameIO.saveGame(diskState: DiskState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
                                                   lightControlIndex: lightPlayerControl.selectedSegmentIndex,
-                                                  boardStates: []), boardStateString: boardView.getBoardStatesString())
+                                                  boardStates: boardView.getBoardStates()))
     }
 
     /// プレイヤーの行動を待ちます。
@@ -334,7 +336,7 @@ class ViewController: UIViewController {
                 try? GameIO.saveGame(diskState: DiskState(turn: self.turn,
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
-                                                          boardStates: []), boardStateString: self.boardView.getBoardStatesString())
+                                                          boardStates: self.boardView.getBoardStates()))
 
                 self.darkCountLabel.text = "\(self.boardView.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.boardView.countDisks(of: .light))"
@@ -350,7 +352,7 @@ class ViewController: UIViewController {
                 try? GameIO.saveGame(diskState: DiskState(turn: self.turn,
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
-                                                          boardStates: []), boardStateString: self.boardView.getBoardStatesString())
+                                                          boardStates: self.boardView.getBoardStates()))
 
                 self.darkCountLabel.text = "\(self.boardView.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.boardView.countDisks(of: .light))"

@@ -169,20 +169,18 @@ public class BoardView: UIView {
         cellView.setDisk(disk, animated: animated, completion: completion)
     }
 
-    func getBoardStatesString() -> String {
-        var output = ""
+    func getBoardStates() -> [[BoardState]] {
+        var result = [[BoardState]]()
         for y in 0..<Self.yCount {
+            var boardStatesInLine = [BoardState]()
             for x in 0..<Self.xCount {
-                if let side = diskAt(DiskCoordinate(x: x, y: y)) {
-                    output += (side == .dark) ? GameIO.darkSymbol : GameIO.lightSymbol
-                } else {
-                    let noneSymbol = "-"
-                    output += noneSymbol
-                }
+                let coordinate = DiskCoordinate(x: x, y: y)
+                let disk = diskAt(coordinate)
+                boardStatesInLine.append(BoardState(disk: disk, coordinate: coordinate))
             }
-            output += "\n"
+            result.append(boardStatesInLine)
         }
-        return output
+        return result
     }
 }
 
