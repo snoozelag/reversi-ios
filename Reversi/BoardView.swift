@@ -114,25 +114,8 @@ public class BoardView: UIView {
         return cellViews[coordinate.y * Board.xCount + coordinate.x]
     }
     
-    /// `x`, `y` で指定されたセルの状態を返します。
-    /// セルにディスクが置かれていない場合、 `nil` が返されます。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Returns: セルにディスクが置かれている場合はそのディスクの値を、置かれていない場合は `nil` を返します。
-    func diskAt(_ coordinate: DiskCoordinate) -> Disk? {
-        cellViewAt(coordinate)?.disk
-    }
-    
     /// `x`, `y` で指定されたセルの状態を、与えられた `disk` に変更します。
     /// `animated` が `true` の場合、アニメーションが実行されます。
-    /// アニメーションの完了通知は `completion` ハンドラーで受け取ることができます。
-    /// - Parameter disk: セルに設定される新しい状態です。 `nil` はディスクが置かれていない状態を表します。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Parameter animated: セルの状態変更を表すアニメーションを表示するかどうかを指定します。
-    /// - Parameter completion: アニメーションの完了通知を受け取るハンドラーです。
-    ///     `animated` に `false` が指定された場合は状態が変更された後で即座に同期的に呼び出されます。
-    ///     ハンドラーが受け取る `Bool` 値は、 `UIView.animate()`  等に準じます。
     func setDisk(squire: SquireState, animated: Bool, completion: ((Bool) -> Void)? = nil) {
         guard let cellView = cellViewAt(squire.coordinate) else {
             preconditionFailure() // FIXME: Add a message.
@@ -146,7 +129,7 @@ public class BoardView: UIView {
             var boardStatesInLine = [SquireState]()
             for x in 0..<board.lines[0].count {
                 let coordinate = DiskCoordinate(x: x, y: y)
-                let disk = diskAt(coordinate)
+                let disk = board.squireAt(coordinate)!.disk
                 boardStatesInLine.append(SquireState(disk: disk, coordinate: coordinate))
             }
             result.append(boardStatesInLine)

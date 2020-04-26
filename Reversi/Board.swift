@@ -17,7 +17,11 @@ class Board {
     private(set) var lines = [[SquireState]]()
 
     init() {
-        lines = self.clear()
+        lines = self.initialLines()
+    }
+
+    init(lines: [[SquireState]]) {
+        self.lines = lines
     }
 
     /// まったくコマが置いてない状態
@@ -35,8 +39,8 @@ class Board {
     }
 
     /// 真ん中あたりにコマを四つおた状態
-    func reset() {
-        lines = clear()
+    private func initialLines() -> [[SquireState]] {
+        var lines = clear()
 
         let initialBoardStates: [SquireState] = [
             SquireState(disk: .light, coordinate: DiskCoordinate(x: Board.xCount / 2 - 1, y: Board.yCount / 2 - 1)),
@@ -50,9 +54,31 @@ class Board {
             squire.disk = $0.disk
             lines[$0.coordinate.y][$0.coordinate.x] = squire
         })
+        return lines
     }
 
-    func diskAt(_ coordinate: DiskCoordinate) {
-
+    func setDisk(squire: SquireState) {
+        lines[squire.coordinate.y][squire.coordinate.x] = squire
     }
+
+    func squireAt(_ coordinate: DiskCoordinate) -> SquireState? {
+        guard coordinate.y >= 0, coordinate.x >= 0, coordinate.y < Board.xCount, coordinate.x < Board.yCount else { return nil }
+        return lines[coordinate.y][coordinate.x]
+    }
+
+    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
+    /// - Parameter side: 数えるディスクの色です。
+    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
+    func countDisks(of side: Disk) -> Int {
+        var count = 0
+        for line in lines {
+            for squire in line {
+                if squire.disk == side {
+                    count +=  1
+                }
+            }
+        }
+        return count
+    }
+
 }

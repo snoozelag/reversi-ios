@@ -17,29 +17,28 @@ class ViewController: UIViewController {
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
 
     /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
-    private var turn: Disk = .dark
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
     private var playerCancellers: [Disk: Canceller] = [:]
     private var viewHasAppeared: Bool = false
-    private var board = Board()
+    private var gameState = GameState()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         boardView.delegate = self
-        boardView.setUp(lines: board.lines)
         
         do {
-            let gameState = try GameIO.loadGame()
+            gameState = try GameIO.loadGame()
             setupViews(gameState: gameState)
         } catch _ {
-            newGame()
+            gameState = GameState()
+            setupViews(gameState: gameState)
         }
 
-        updateMessageViews(side: turn)
-        darkCountLabel.text = "\(countDisks(of: .dark))"
-        lightCountLabel.text = "\(countDisks(of: .light))"
+        updateMessageViews(side: gameState.turn)
+        darkCountLabel.text = "\(gameState.board.countDisks(of: .dark))"
+        lightCountLabel.text = "\(gameState.board.countDisks(of: .light))"
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -52,10 +51,17 @@ class ViewController: UIViewController {
     }
 
     private func setupViews(gameState: GameState) {
-        turn = gameState.turn
+
+        boardView.setUp(lines: gameState.board.lines)
+
+        darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
+        lightPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
+
+        try? GameIO.saveGame(gameState: gameState)
+
         darkPlayerControl.selectedSegmentIndex = gameState.darkControlIndex
         lightPlayerControl.selectedSegmentIndex = gameState.lightControlIndex
-        gameState.lines.forEach({ line in
+        gameState.board.lines.forEach({ line in
             line.forEach({ squire in
                 boardView.setDisk(squire: squire, animated: false)
             })
@@ -92,8 +98,8 @@ class ViewController: UIViewController {
 
     /// ゲームの結果をメッセージラベルに表示
     private func updateMessageViewsForGameEnd() {
-        let darkCount = countDisks(of: .dark)
-        let lightCount = countDisks(of: .light)
+        let darkCount = gameState.board.countDisks(of: .dark)
+        let lightCount = gameState.board.countDisks(of: .light)
         if darkCount == lightCount {
             // 引き分けを表示
             messageDiskView.isHidden = true
@@ -139,16 +145,13 @@ class ViewController: UIViewController {
     /// 人間、コンピュータを変更
     private func changePlayer(side: Disk, player: PlayerType) {
 
-        try? GameIO.saveGame(gameState: GameState(turn: turn,
-                                                  darkControlIndex: darkPlayerControl.selectedSegmentIndex,
-                                                  lightControlIndex: lightPlayerControl.selectedSegmentIndex,
-                                                  lines: boardView.getLines(board: board)))
+        try? GameIO.saveGame(gameState: gameState)
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
         }
 
-        if !isAnimating, side == turn, case .computer = player {
+        if !isAnimating, side == gameState.turn, case .computer = player {
             playTurnOfComputer()
         }
     }
@@ -163,30 +166,16 @@ class ViewController: UIViewController {
             playerCancellers.removeValue(forKey: side)
         }
 
-        newGame()
+        let newGameState = GameState()
+        setupViews(gameState: newGameState)
         waitForPlayer()
     }
 
     // MARK: Game management
 
-    /// ゲームの状態を初期化し、新しいゲームを開始します。
-    private func newGame() {
-        board.reset()
-        boardView.setUp(lines: board.lines)
-        turn = .dark
-
-        darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
-        lightPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
-
-        try? GameIO.saveGame(gameState: GameState(turn: turn,
-                                                  darkControlIndex: darkPlayerControl.selectedSegmentIndex,
-                                                  lightControlIndex: lightPlayerControl.selectedSegmentIndex,
-                                                  lines: boardView.getLines(board: board)))
-    }
-
     /// プレイヤーの行動を待ちます。
     private func waitForPlayer() {
-        let playerControl = (turn == .dark) ? darkPlayerControl : lightPlayerControl
+        let playerControl = (gameState.turn == .dark) ? darkPlayerControl : lightPlayerControl
         switch PlayerType(rawValue: playerControl!.selectedSegmentIndex)! {
         case .human:
             break
@@ -200,31 +189,31 @@ class ViewController: UIViewController {
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     private func nextTurn() {
 
-        turn.flip()
+        gameState.turn.flip()
 
-        if validMoves(for: turn).isEmpty {
-            if validMoves(for: turn.flipped).isEmpty {
+        if validMoves(for: gameState.turn).isEmpty {
+            if validMoves(for: gameState.turn.flipped).isEmpty {
                 updateMessageViewsForGameEnd()
             } else {
-                updateMessageViews(side: turn)
+                updateMessageViews(side: gameState.turn)
                 showPassDialog()
             }
         } else {
-            updateMessageViews(side: turn)
+            updateMessageViews(side: gameState.turn)
             waitForPlayer()
         }
     }
 
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     private func playTurnOfComputer() {
-        let coordinate = validMoves(for: turn).randomElement()!
+        let coordinate = validMoves(for: gameState.turn).randomElement()!
 
-        playerActivityIndicators[turn.rawValue].startAnimating()
+        playerActivityIndicators[gameState.turn.rawValue].startAnimating()
 
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
-            self.playerActivityIndicators[self.turn.rawValue].stopAnimating()
-            self.playerCancellers[self.turn] = nil
+            self.playerActivityIndicators[self.gameState.turn.rawValue].stopAnimating()
+            self.playerCancellers[self.gameState.turn] = nil
         }
         let canceller = Canceller(cleanUp)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
@@ -232,34 +221,25 @@ class ViewController: UIViewController {
             if canceller.isCancelled { return }
             cleanUp()
 
-            try! self.placeDisk(self.turn, at: coordinate, animated: true) { [weak self] _ in
+            try! self.placeDisk(squire: SquireState(disk: self.gameState.turn, coordinate: coordinate), animated: true) { [weak self] _ in
                 self?.nextTurn()
             }
         }
 
-        playerCancellers[turn] = canceller
+        playerCancellers[gameState.turn] = canceller
     }
 
     // MARK: - Reversi logics
 
-    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
-    /// - Parameter side: 数えるディスクの色です。
-    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
-    private func countDisks(of side: Disk) -> Int {
-        var count = 0
+    private func flippedDiskCoordinatesByPlacingDisk(placing: SquireState) -> [DiskCoordinate] {
 
-        for y in 0..<Board.yCount {
-            for x in 0..<Board.xCount {
-                if boardView.diskAt(DiskCoordinate(x: x, y: y)) == side {
-                    count +=  1
-                }
-            }
+        let isNotPresent = (gameState.board.squireAt(placing.coordinate)!.disk == nil)
+        guard isNotPresent else {
+            return []
         }
 
-        return count
-    }
+        var diskCoordinates = [DiskCoordinate]()
 
-    private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: DiskCoordinate) -> [DiskCoordinate] {
         let directions = [
             (x: -1, y: -1),
             (x:  0, y: -1),
@@ -271,31 +251,27 @@ class ViewController: UIViewController {
             (x: -1, y:  1),
         ]
 
-        guard boardView.diskAt(coordinate) == nil else {
-            return []
-        }
-
-        var diskCoordinates = [DiskCoordinate]()
-
         for direction in directions {
-            var x = coordinate.x
-            var y = coordinate.y
+            var x = placing.coordinate.x
+            var y = placing.coordinate.y
 
             var diskCoordinatesInLine = [DiskCoordinate]()
             flipping: while true {
                 x += direction.x
                 y += direction.y
 
-                let diskAtCoordinate = boardView.diskAt(DiskCoordinate(x: x, y: y))
-                switch (disk, diskAtCoordinate) { // Uses tuples to make patterns exhaustive
-                case (.dark, .some(.dark)), (.light, .some(.light)):
-                    diskCoordinates.append(contentsOf: diskCoordinatesInLine)
-                    break flipping
-                case (.dark, .some(.light)), (.light, .some(.dark)):
-                    diskCoordinatesInLine.append(DiskCoordinate(x: x, y: y))
-                case (_, .none):
-                    break flipping
+                if let directionDisk = gameState.board.squireAt(DiskCoordinate(x: x, y: y))?.disk {
+                    switch (placing.disk!, directionDisk) { // Uses tuples to make patterns exhaustive
+                    case (.dark, .dark), (.light, .light):
+                        diskCoordinates.append(contentsOf: diskCoordinatesInLine)
+                        break flipping
+                    case (.dark, .light), (.light, .dark):
+                        diskCoordinatesInLine.append(DiskCoordinate(x: x, y: y))
+                    }
+                } else {
+                    break
                 }
+
             }
         }
 
@@ -308,7 +284,7 @@ class ViewController: UIViewController {
     /// - Parameter y: セルの行です。
     /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
     private func canPlaceDisk(_ disk: Disk, atX x: Int, y: Int) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(disk, at: DiskCoordinate(x: x, y: y)).isEmpty
+        !flippedDiskCoordinatesByPlacingDisk(placing: SquireState(disk: disk, coordinate: DiskCoordinate(x: x, y: y))).isEmpty
     }
 
     /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
@@ -335,10 +311,10 @@ class ViewController: UIViewController {
     ///     このクロージャは値を返さず、アニメーションが完了したかを示す真偽値を受け取ります。
     ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
     /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
-    private func placeDisk(_ disk: Disk, at coordinate: DiskCoordinate, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
-        let diskCoordinates = flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+    private func placeDisk(squire: SquireState, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
+        let diskCoordinates = flippedDiskCoordinatesByPlacingDisk(placing: squire)
         if diskCoordinates.isEmpty {
-            throw DiskPlacementError(disk: disk, coordinate: coordinate)
+            throw DiskPlacementError(disk: squire.disk!, coordinate: squire.coordinate)
         }
 
         if isAnimated {
@@ -346,36 +322,30 @@ class ViewController: UIViewController {
                 self?.animationCanceller = nil
             }
             animationCanceller = Canceller(cleanUp)
-            animateSettingDisks(at: [coordinate] + diskCoordinates, to: disk) { [weak self] isFinished in
+            animateSettingDisks(at: [squire.coordinate] + diskCoordinates, to: squire.disk!) { [weak self] isFinished in
                 guard let self = self else { return }
                 guard let canceller = self.animationCanceller else { return }
                 if canceller.isCancelled { return }
                 cleanUp()
 
                 completion?(isFinished)
-                try? GameIO.saveGame(gameState: GameState(turn: self.turn,
-                                                          darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
-                                                          lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
-                                                          lines: self.boardView.getLines(board: self.board)))
+                try? GameIO.saveGame(gameState: self.gameState)
 
-                self.darkCountLabel.text = "\(self.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.countDisks(of: .light))"
+                self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
+                self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
             }
         } else {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                self.boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
+                self.boardView.setDisk(squire: squire, animated: false)
                 for coordinate in diskCoordinates {
-                    self.boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
+                    self.boardView.setDisk(squire: SquireState(disk: squire.disk, coordinate: coordinate), animated: false)
                 }
                 completion?(true)
-                try? GameIO.saveGame(gameState: GameState(turn: self.turn,
-                                                          darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
-                                                          lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
-                                                          lines: self.boardView.getLines(board: self.board)))
+                try? GameIO.saveGame(gameState: self.gameState)
 
-                self.darkCountLabel.text = "\(self.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.countDisks(of: .light))"
+                self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
+                self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
             }
         }
     }
@@ -393,7 +363,10 @@ class ViewController: UIViewController {
         }
 
         let animationCanceller = self.animationCanceller!
-        boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: true) { [weak self] isFinished in
+
+        let squire = SquireState(disk: disk, coordinate: coordinate)
+        gameState.board.setDisk(squire: squire)
+        boardView.setDisk(squire: squire, animated: true) { [weak self] isFinished in
             guard let self = self else { return }
             if animationCanceller.isCancelled { return }
             if isFinished {
@@ -415,10 +388,10 @@ extension ViewController: BoardViewDelegate {
     /// - Parameter y: セルの行です。
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate) {
         if isAnimating { return }
-        let playerControl = (turn == .dark) ? darkPlayerControl : lightPlayerControl
+        let playerControl = (gameState.turn == .dark) ? darkPlayerControl : lightPlayerControl
         guard case .human = PlayerType(rawValue: playerControl!.selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
-        try? placeDisk(turn, at: coordinate, animated: true) { [weak self] _ in
+        try? placeDisk(squire: SquireState(disk: gameState.turn, coordinate: coordinate), animated: true) { [weak self] _ in
             self?.nextTurn()
         }
     }

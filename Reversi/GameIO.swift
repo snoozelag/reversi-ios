@@ -12,7 +12,7 @@ struct GameState {
     var turn: Disk = .dark
     var darkControlIndex: Int = 0
     var lightControlIndex: Int = 0
-    var lines = [[SquireState]]()
+    var board = Board()
 }
 
 struct SquireState {
@@ -33,7 +33,7 @@ class GameIO {
         output += String(gameState.darkControlIndex)
         output += String(gameState.lightControlIndex)
         output += "\n"
-        output += getSquireStatesString(lines: gameState.lines)
+        output += getSquireStatesString(lines: gameState.board.lines)
 
         do {
             try output.write(toFile: path, atomically: true, encoding: .utf8)
@@ -86,7 +86,7 @@ class GameIO {
 
         let lines = try getLines(linesString: linesString)
 
-        return GameState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, lines: lines)
+        return GameState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, board: Board(lines: lines))
     }
 
     private static func getLines(linesString: ArraySlice<Substring>) throws -> [[SquireState]] {
