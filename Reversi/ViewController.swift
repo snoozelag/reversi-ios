@@ -55,9 +55,9 @@ class ViewController: UIViewController {
         turn = gameState.turn
         darkPlayerControl.selectedSegmentIndex = gameState.darkControlIndex
         lightPlayerControl.selectedSegmentIndex = gameState.lightControlIndex
-        gameState.boardStates.forEach({ boardStatesInLine in
-            boardStatesInLine.forEach({
-                boardView.setDisk($0.disk, at: $0.coordinate, animated: false)
+        gameState.lines.forEach({ line in
+            line.forEach({ squire in
+                boardView.setDisk(squire: squire, animated: false)
             })
         })
     }
@@ -142,7 +142,7 @@ class ViewController: UIViewController {
         try? GameIO.saveGame(gameState: GameState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
                                                   lightControlIndex: lightPlayerControl.selectedSegmentIndex,
-                                                  boardStates: boardView.getBoardStates()))
+                                                  lines: boardView.getLines(board: board)))
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
@@ -171,7 +171,7 @@ class ViewController: UIViewController {
 
     /// ゲームの状態を初期化し、新しいゲームを開始します。
     private func newGame() {
-        boardView.reset()
+        board.reset()
         boardView.setUp(lines: board.lines)
         turn = .dark
 
@@ -181,7 +181,7 @@ class ViewController: UIViewController {
         try? GameIO.saveGame(gameState: GameState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
                                                   lightControlIndex: lightPlayerControl.selectedSegmentIndex,
-                                                  boardStates: boardView.getBoardStates()))
+                                                  lines: boardView.getLines(board: board)))
     }
 
     /// プレイヤーの行動を待ちます。
@@ -356,7 +356,7 @@ class ViewController: UIViewController {
                 try? GameIO.saveGame(gameState: GameState(turn: self.turn,
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
-                                                          boardStates: self.boardView.getBoardStates()))
+                                                          lines: self.boardView.getLines(board: self.board)))
 
                 self.darkCountLabel.text = "\(self.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.countDisks(of: .light))"
@@ -364,15 +364,15 @@ class ViewController: UIViewController {
         } else {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                self.boardView.setDisk(disk, at: coordinate, animated: false)
+                self.boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
                 for coordinate in diskCoordinates {
-                    self.boardView.setDisk(disk, at: coordinate, animated: false)
+                    self.boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
                 }
                 completion?(true)
                 try? GameIO.saveGame(gameState: GameState(turn: self.turn,
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
-                                                          boardStates: self.boardView.getBoardStates()))
+                                                          lines: self.boardView.getLines(board: self.board)))
 
                 self.darkCountLabel.text = "\(self.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.countDisks(of: .light))"
@@ -393,14 +393,14 @@ class ViewController: UIViewController {
         }
 
         let animationCanceller = self.animationCanceller!
-        boardView.setDisk(disk, at: coordinate, animated: true) { [weak self] isFinished in
+        boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: true) { [weak self] isFinished in
             guard let self = self else { return }
             if animationCanceller.isCancelled { return }
             if isFinished {
                 self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
             } else {
                 for coordinate in coordinates {
-                    self.boardView.setDisk(disk, at: coordinate, animated: false)
+                    self.boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
                 }
                 completion(false)
             }

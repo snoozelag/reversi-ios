@@ -12,10 +12,10 @@ struct GameState {
     var turn: Disk = .dark
     var darkControlIndex: Int = 0
     var lightControlIndex: Int = 0
-    var boardStates = [[BoardState]]()
+    var lines = [[SquireState]]()
 }
 
-struct BoardState {
+struct SquireState {
     var disk: Disk?
     var coordinate: DiskCoordinate
 }
@@ -33,7 +33,7 @@ class GameIO {
         output += String(gameState.darkControlIndex)
         output += String(gameState.lightControlIndex)
         output += "\n"
-        output += getBoardStatesString(gameState.boardStates)
+        output += getSquireStatesString(lines: gameState.lines)
 
         do {
             try output.write(toFile: path, atomically: true, encoding: .utf8)
@@ -42,11 +42,11 @@ class GameIO {
         }
     }
 
-    static private func getBoardStatesString(_ boardStates: [[BoardState]]) -> String {
+    static private func getSquireStatesString(lines: [[SquireState]]) -> String {
         var output = ""
-        for boardStatesInLine in boardStates {
-            for boardState in boardStatesInLine {
-                output += DiskSymbol(disk: boardState.disk).rawValue
+        for line in lines {
+            for squire in line {
+                output += DiskSymbol(disk: squire.disk).rawValue
             }
             output += "\n"
         }
@@ -57,61 +57,64 @@ class GameIO {
     static func loadGame() throws -> GameState {
 
         let input = try String(contentsOfFile: path, encoding: .utf8)
-        var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
+        var linesString: ArraySlice<Substring> = input.split(separator: "\n")[...]
 
-        guard var line = lines.popFirst() else {
+        guard var lineString = linesString.popFirst() else {
             throw FileIOError.read(path: path, cause: nil)
         }
 
         let turn: Disk = try {
-            guard let disk = line.popFirst().flatMap({  DiskSymbol(rawValue: String($0)) })?.disk else {
+            guard let disk = lineString.popFirst().flatMap({  DiskSymbol(rawValue: String($0)) })?.disk else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             return disk
         }()
 
         let darkPlayerIndex: Int = try {
-            guard let playerTypeIndex = line.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
+            guard let playerTypeIndex = lineString.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             return playerTypeIndex
         }()
 
         let lightPlayerIndex: Int = try {
-            guard let playerTypeIndex = line.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
+            guard let playerTypeIndex = lineString.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             return playerTypeIndex
         }()
 
-        let boardStates: [[BoardState]] = try {
-            var result = [[BoardState]]()
-            var y = 0
-            while let line = lines.popFirst() {
-                var lineResult = [BoardState]()
-                var x = 0
-                for character in line {
-                    guard let symbol = DiskSymbol(rawValue: "\(character)") else {
-                        throw FileIOError.read(path: path, cause: nil)
-                    }
-                    let coordinate = DiskCoordinate(x: x, y: y)
-                    let state = BoardState(disk: symbol.disk, coordinate: coordinate)
-                    lineResult.append(state)
-                    x += 1
-                }
-                guard x == Board.xCount else {
+        let lines = try getLines(linesString: linesString)
+
+        return GameState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, lines: lines)
+    }
+
+    private static func getLines(linesString: ArraySlice<Substring>) throws -> [[SquireState]] {
+        var linesString = linesString
+        var lines = [[SquireState]]()
+        var y = 0
+        while let lineString = linesString.popFirst() {
+            var line = [SquireState]()
+            var x = 0
+            for character in lineString {
+                guard let symbol = DiskSymbol(rawValue: "\(character)") else {
                     throw FileIOError.read(path: path, cause: nil)
                 }
-                result.append(lineResult)
-                y += 1
+                let coordinate = DiskCoordinate(x: x, y: y)
+                let squire = SquireState(disk: symbol.disk, coordinate: coordinate)
+                line.append(squire)
+                x += 1
             }
-            guard y == Board.yCount else {
+            guard x == Board.xCount else {
                 throw FileIOError.read(path: path, cause: nil)
             }
-            return result
-        }()
-
-        return GameState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
+            lines.append(line)
+            y += 1
+        }
+        guard y == Board.yCount else {
+            throw FileIOError.read(path: path, cause: nil)
+        }
+        return lines
     }
 
     enum FileIOError: Error {

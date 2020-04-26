@@ -22,8 +22,9 @@ public class BoardView: UIView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
     }
-    
-    func setUp(lines: [[BoardState]]) {
+
+    /// linesには初期状態の盤面状態を渡します
+    func setUp(lines: [[SquireState]]) {
         self.backgroundColor = UIColor(named: "DarkColor")!
 
         let cellViews: [CellView] = lines.reduce(into: [CellView](), { result, line in
@@ -47,12 +48,11 @@ public class BoardView: UIView {
         NSLayoutConstraint.activate([
             cellViews[0].widthAnchor.constraint(equalTo: cellViews[0].heightAnchor),
         ])
-        
-        for y in 0..<Board.yCount {
-            for x in 0..<Board.xCount {
 
+        for line in lines {
+            for squire in line {
                 let topNeighborAnchor: NSLayoutYAxisAnchor = {
-                    if let cellView = cellViewAt(DiskCoordinate(x: x, y: y - 1)) {
+                    if let cellView = cellViewAt(DiskCoordinate(x: squire.coordinate.x, y: squire.coordinate.y - 1)) {
                         return cellView.bottomAnchor
                     } else {
                         return topAnchor
@@ -60,7 +60,7 @@ public class BoardView: UIView {
                 }()
 
                 let leftNeighborAnchor: NSLayoutXAxisAnchor = {
-                    if let cellView = cellViewAt(DiskCoordinate(x: x - 1, y: y)) {
+                    if let cellView = cellViewAt(DiskCoordinate(x: squire.coordinate.x - 1, y: squire.coordinate.y)) {
                         return cellView.rightAnchor
                     } else {
                         return leftAnchor
@@ -69,56 +69,44 @@ public class BoardView: UIView {
 
 
                 let lineWidth: CGFloat = 2
-                let cellView = cellViewAt(DiskCoordinate(x: x, y: y))!
+                let cellView = cellViewAt(DiskCoordinate(x: squire.coordinate.x, y: squire.coordinate.y))!
                 NSLayoutConstraint.activate([
                     cellView.topAnchor.constraint(equalTo: topNeighborAnchor, constant: lineWidth),
                     cellView.leftAnchor.constraint(equalTo: leftNeighborAnchor, constant: lineWidth),
                 ])
-                
-                if y == Board.yCount - 1 {
+
+                if squire.coordinate.y == Board.yCount - 1 {
                     NSLayoutConstraint.activate([
                         self.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: lineWidth),
                     ])
                 }
-                if x == Board.xCount - 1 {
+                if squire.coordinate.x == Board.xCount - 1 {
                     NSLayoutConstraint.activate([
                         self.rightAnchor.constraint(equalTo: cellView.rightAnchor, constant: lineWidth),
                     ])
                 }
             }
         }
-        
-        reset()
-        
-        for y in 0..<Board.yCount {
-            for x in 0..<Board.xCount {
-                let coordinate = DiskCoordinate(x: x, y: y)
-                let cellView = cellViewAt(coordinate)!
-                let action = CellSelectionAction(boardView: self, coordinate: coordinate)
+
+        setDisks(lines: lines)
+
+        for line in lines {
+            for squire in line {
+                let cellView = cellViewAt(squire.coordinate)!
+                let action = CellSelectionAction(boardView: self, coordinate: squire.coordinate)
                 actions.append(action) // To retain the `action`
                 cellView.addTarget(action, action: #selector(action.selectCell), for: .touchUpInside)
             }
         }
     }
 
-    /// 盤をゲーム開始時に状態に戻します。このメソッドはアニメーションを伴いません。
-    public func reset() {
-        for y in 0..<Board.yCount {
-            for x in 0..<Board.xCount {
-                setDisk(nil, at: DiskCoordinate(x: x, y: y), animated: false)
+    /// 盤をセット
+    func setDisks(lines: [[SquireState]]) {
+        for line in lines {
+            for squire in line {
+                setDisk(squire: squire, animated: false)
             }
         }
-
-        let initialBoardStates: [BoardState] = [
-            BoardState(disk: .light, coordinate: DiskCoordinate(x: Board.xCount / 2 - 1, y: Board.yCount / 2 - 1)),
-            BoardState(disk: .dark, coordinate: DiskCoordinate(x: Board.xCount / 2, y: Board.yCount / 2 - 1)),
-            BoardState(disk: .dark, coordinate: DiskCoordinate(x: Board.xCount / 2 - 1, y: Board.yCount / 2)),
-            BoardState(disk: .light, coordinate: DiskCoordinate(x: Board.xCount / 2, y: Board.yCount / 2))
-        ]
-
-        initialBoardStates.forEach({
-            setDisk($0.disk, at: $0.coordinate, animated: false)
-        })
     }
     
     private func cellViewAt(_ coordinate: DiskCoordinate) -> CellView? {
@@ -145,21 +133,21 @@ public class BoardView: UIView {
     /// - Parameter completion: アニメーションの完了通知を受け取るハンドラーです。
     ///     `animated` に `false` が指定された場合は状態が変更された後で即座に同期的に呼び出されます。
     ///     ハンドラーが受け取る `Bool` 値は、 `UIView.animate()`  等に準じます。
-    func setDisk(_ disk: Disk?, at coordinate: DiskCoordinate, animated: Bool, completion: ((Bool) -> Void)? = nil) {
-        guard let cellView = cellViewAt(coordinate) else {
+    func setDisk(squire: SquireState, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+        guard let cellView = cellViewAt(squire.coordinate) else {
             preconditionFailure() // FIXME: Add a message.
         }
-        cellView.setDisk(disk, animated: animated, completion: completion)
+        cellView.setDisk(squire.disk, animated: animated, completion: completion)
     }
 
-    func getBoardStates() -> [[BoardState]] {
-        var result = [[BoardState]]()
-        for y in 0..<Board.yCount {
-            var boardStatesInLine = [BoardState]()
-            for x in 0..<Board.xCount {
+    func getLines(board: Board) -> [[SquireState]] {
+        var result = [[SquireState]]()
+        for y in 0..<board.lines.count {
+            var boardStatesInLine = [SquireState]()
+            for x in 0..<board.lines[0].count {
                 let coordinate = DiskCoordinate(x: x, y: y)
                 let disk = diskAt(coordinate)
-                boardStatesInLine.append(BoardState(disk: disk, coordinate: coordinate))
+                boardStatesInLine.append(SquireState(disk: disk, coordinate: coordinate))
             }
             result.append(boardStatesInLine)
         }
