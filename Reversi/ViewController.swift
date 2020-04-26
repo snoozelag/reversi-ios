@@ -29,8 +29,8 @@ class ViewController: UIViewController {
         boardView.delegate = self
         
         do {
-            let diskState = try GameIO.loadGame()
-            setupViews(diskState: diskState)
+            let gameState = try GameIO.loadGame()
+            setupViews(gameState: gameState)
         } catch _ {
             newGame()
         }
@@ -49,11 +49,11 @@ class ViewController: UIViewController {
         }
     }
 
-    private func setupViews(diskState: DiskState) {
-        turn = diskState.turn
-        darkPlayerControl.selectedSegmentIndex = diskState.darkControlIndex
-        lightPlayerControl.selectedSegmentIndex = diskState.lightControlIndex
-        diskState.boardStates.forEach({ boardStatesInLine in
+    private func setupViews(gameState: GameState) {
+        turn = gameState.turn
+        darkPlayerControl.selectedSegmentIndex = gameState.darkControlIndex
+        lightPlayerControl.selectedSegmentIndex = gameState.lightControlIndex
+        gameState.boardStates.forEach({ boardStatesInLine in
             boardStatesInLine.forEach({
                 boardView.setDisk($0.disk, at: $0.coordinate, animated: false)
             })
@@ -137,7 +137,7 @@ class ViewController: UIViewController {
     /// 人間、コンピュータを変更
     private func changePlayer(side: Disk, player: PlayerType) {
 
-        try? GameIO.saveGame(diskState: DiskState(turn: turn,
+        try? GameIO.saveGame(gameState: GameState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
                                                   lightControlIndex: lightPlayerControl.selectedSegmentIndex,
                                                   boardStates: boardView.getBoardStates()))
@@ -175,7 +175,7 @@ class ViewController: UIViewController {
         darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
         lightPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
 
-        try? GameIO.saveGame(diskState: DiskState(turn: turn,
+        try? GameIO.saveGame(gameState: GameState(turn: turn,
                                                   darkControlIndex: darkPlayerControl.selectedSegmentIndex,
                                                   lightControlIndex: lightPlayerControl.selectedSegmentIndex,
                                                   boardStates: boardView.getBoardStates()))
@@ -333,7 +333,7 @@ class ViewController: UIViewController {
                 cleanUp()
 
                 completion?(isFinished)
-                try? GameIO.saveGame(diskState: DiskState(turn: self.turn,
+                try? GameIO.saveGame(gameState: GameState(turn: self.turn,
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
                                                           boardStates: self.boardView.getBoardStates()))
@@ -349,7 +349,7 @@ class ViewController: UIViewController {
                     self.boardView.setDisk(disk, at: coordinate, animated: false)
                 }
                 completion?(true)
-                try? GameIO.saveGame(diskState: DiskState(turn: self.turn,
+                try? GameIO.saveGame(gameState: GameState(turn: self.turn,
                                                           darkControlIndex: self.darkPlayerControl.selectedSegmentIndex,
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
                                                           boardStates: self.boardView.getBoardStates()))

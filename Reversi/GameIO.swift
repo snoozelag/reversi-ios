@@ -8,7 +8,7 @@
 
 import UIKit
 
-struct DiskState {
+struct GameState {
     var turn: Disk = .dark
     var darkControlIndex: Int = 0
     var lightControlIndex: Int = 0
@@ -27,13 +27,13 @@ class GameIO {
     }
 
     /// ゲームの状態をファイルに書き出し、保存します。
-    static func saveGame(diskState: DiskState) throws {
+    static func saveGame(gameState: GameState) throws {
         var output: String = ""
-        output += DiskSymbol(disk: diskState.turn).rawValue
-        output += String(diskState.darkControlIndex)
-        output += String(diskState.lightControlIndex)
+        output += DiskSymbol(disk: gameState.turn).rawValue
+        output += String(gameState.darkControlIndex)
+        output += String(gameState.lightControlIndex)
         output += "\n"
-        output += getBoardStatesString(diskState.boardStates)
+        output += getBoardStatesString(gameState.boardStates)
 
         do {
             try output.write(toFile: path, atomically: true, encoding: .utf8)
@@ -54,7 +54,7 @@ class GameIO {
     }
 
     /// ゲームの状態をファイルから読み込み、復元します。
-    static func loadGame() throws -> DiskState {
+    static func loadGame() throws -> GameState {
 
         let input = try String(contentsOfFile: path, encoding: .utf8)
         var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
@@ -111,7 +111,7 @@ class GameIO {
             return result
         }()
 
-        return DiskState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
+        return GameState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
     }
 
     enum FileIOError: Error {
