@@ -15,25 +15,25 @@ public class BoardView: UIView {
     private var cellViews = [CellView]()
     private var actions = [CellSelectionAction]()
 
-    
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setUp()
     }
     
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setUp()
     }
     
-    private func setUp() {
+    func setUp(lines: [[BoardState]]) {
         self.backgroundColor = UIColor(named: "DarkColor")!
-        
-        let cellViews: [CellView] = (0 ..< (Board.xCount * Board.yCount)).map { _ in
-            let cellView = CellView()
-            cellView.translatesAutoresizingMaskIntoConstraints = false
-            return cellView
-        }
+
+        let cellViews: [CellView] = lines.reduce(into: [CellView](), { result, line in
+            for squire in line {
+                let cellView = CellView()
+                cellView.translatesAutoresizingMaskIntoConstraints = false
+                result.append(cellView)
+            }
+        })
+
         self.cellViews = cellViews
         
         cellViews.forEach(self.addSubview(_:))

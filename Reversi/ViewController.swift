@@ -22,11 +22,13 @@ class ViewController: UIViewController {
     private var isAnimating: Bool { animationCanceller != nil }
     private var playerCancellers: [Disk: Canceller] = [:]
     private var viewHasAppeared: Bool = false
+    private var board = Board()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         boardView.delegate = self
+        boardView.setUp(lines: board.lines)
         
         do {
             let gameState = try GameIO.loadGame()
@@ -170,6 +172,7 @@ class ViewController: UIViewController {
     /// ゲームの状態を初期化し、新しいゲームを開始します。
     private func newGame() {
         boardView.reset()
+        boardView.setUp(lines: board.lines)
         turn = .dark
 
         darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
