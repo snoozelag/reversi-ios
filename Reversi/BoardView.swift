@@ -14,12 +14,6 @@ public class BoardView: UIView {
 
     private var cellViews = [CellView]()
     private var actions = [CellSelectionAction]()
-    
-    /// 盤の幅（ `8` ）を表します。
-    static let xCount: Int = 8
-    
-    /// 盤の高さ（ `8` ）を返します。
-    static let yCount: Int = 8
 
     
     override init(frame: CGRect) {
@@ -31,28 +25,11 @@ public class BoardView: UIView {
         super.init(coder: coder)
         setUp()
     }
-
-    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
-    /// - Parameter side: 数えるディスクの色です。
-    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
-    func countDisks(of side: Disk) -> Int {
-        var count = 0
-
-        for y in 0..<Self.yCount {
-            for x in 0..<Self.xCount {
-                if diskAt(DiskCoordinate(x: x, y: y)) == side {
-                    count +=  1
-                }
-            }
-        }
-
-        return count
-    }
     
     private func setUp() {
         self.backgroundColor = UIColor(named: "DarkColor")!
         
-        let cellViews: [CellView] = (0 ..< (Self.xCount * Self.yCount)).map { _ in
+        let cellViews: [CellView] = (0 ..< (Board.xCount * Board.yCount)).map { _ in
             let cellView = CellView()
             cellView.translatesAutoresizingMaskIntoConstraints = false
             return cellView
@@ -71,8 +48,8 @@ public class BoardView: UIView {
             cellViews[0].widthAnchor.constraint(equalTo: cellViews[0].heightAnchor),
         ])
         
-        for y in 0..<Self.yCount {
-            for x in 0..<Self.xCount {
+        for y in 0..<Board.yCount {
+            for x in 0..<Board.xCount {
 
                 let topNeighborAnchor: NSLayoutYAxisAnchor = {
                     if let cellView = cellViewAt(DiskCoordinate(x: x, y: y - 1)) {
@@ -98,12 +75,12 @@ public class BoardView: UIView {
                     cellView.leftAnchor.constraint(equalTo: leftNeighborAnchor, constant: lineWidth),
                 ])
                 
-                if y == Self.yCount - 1 {
+                if y == Board.yCount - 1 {
                     NSLayoutConstraint.activate([
                         self.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: lineWidth),
                     ])
                 }
-                if x == Self.xCount - 1 {
+                if x == Board.xCount - 1 {
                     NSLayoutConstraint.activate([
                         self.rightAnchor.constraint(equalTo: cellView.rightAnchor, constant: lineWidth),
                     ])
@@ -113,8 +90,8 @@ public class BoardView: UIView {
         
         reset()
         
-        for y in 0..<Self.yCount {
-            for x in 0..<Self.xCount {
+        for y in 0..<Board.yCount {
+            for x in 0..<Board.xCount {
                 let coordinate = DiskCoordinate(x: x, y: y)
                 let cellView = cellViewAt(coordinate)!
                 let action = CellSelectionAction(boardView: self, coordinate: coordinate)
@@ -123,24 +100,30 @@ public class BoardView: UIView {
             }
         }
     }
-    
+
     /// 盤をゲーム開始時に状態に戻します。このメソッドはアニメーションを伴いません。
     public func reset() {
-        for y in 0..<Self.yCount {
-            for x in 0..<Self.xCount {
+        for y in 0..<Board.yCount {
+            for x in 0..<Board.xCount {
                 setDisk(nil, at: DiskCoordinate(x: x, y: y), animated: false)
             }
         }
-        
-        setDisk(.light, at: DiskCoordinate(x: Self.xCount / 2 - 1, y: Self.yCount / 2 - 1), animated: false)
-        setDisk(.dark, at: DiskCoordinate(x: Self.xCount / 2, y: Self.yCount / 2 - 1), animated: false)
-        setDisk(.dark, at: DiskCoordinate(x: Self.xCount / 2 - 1, y: Self.yCount / 2), animated: false)
-        setDisk(.light, at: DiskCoordinate(x: Self.xCount / 2, y: Self.yCount / 2), animated: false)
+
+        let initialBoardStates: [BoardState] = [
+            BoardState(disk: .light, coordinate: DiskCoordinate(x: Board.xCount / 2 - 1, y: Board.yCount / 2 - 1)),
+            BoardState(disk: .dark, coordinate: DiskCoordinate(x: Board.xCount / 2, y: Board.yCount / 2 - 1)),
+            BoardState(disk: .dark, coordinate: DiskCoordinate(x: Board.xCount / 2 - 1, y: Board.yCount / 2)),
+            BoardState(disk: .light, coordinate: DiskCoordinate(x: Board.xCount / 2, y: Board.yCount / 2))
+        ]
+
+        initialBoardStates.forEach({
+            setDisk($0.disk, at: $0.coordinate, animated: false)
+        })
     }
     
     private func cellViewAt(_ coordinate: DiskCoordinate) -> CellView? {
-        guard (0..<Self.xCount).contains(coordinate.x) && (0..<Self.yCount).contains(coordinate.y) else { return nil }
-        return cellViews[coordinate.y * Self.xCount + coordinate.x]
+        guard (0..<Board.xCount).contains(coordinate.x) && (0..<Board.yCount).contains(coordinate.y) else { return nil }
+        return cellViews[coordinate.y * Board.xCount + coordinate.x]
     }
     
     /// `x`, `y` で指定されたセルの状態を返します。
@@ -171,9 +154,9 @@ public class BoardView: UIView {
 
     func getBoardStates() -> [[BoardState]] {
         var result = [[BoardState]]()
-        for y in 0..<Self.yCount {
+        for y in 0..<Board.yCount {
             var boardStatesInLine = [BoardState]()
-            for x in 0..<Self.xCount {
+            for x in 0..<Board.xCount {
                 let coordinate = DiskCoordinate(x: x, y: y)
                 let disk = diskAt(coordinate)
                 boardStatesInLine.append(BoardState(disk: disk, coordinate: coordinate))

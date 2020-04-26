@@ -99,13 +99,13 @@ class GameIO {
                     lineResult.append(state)
                     x += 1
                 }
-                guard x == BoardView.xCount else {
+                guard x == Board.xCount else {
                     throw FileIOError.read(path: path, cause: nil)
                 }
                 result.append(lineResult)
                 y += 1
             }
-            guard y == BoardView.yCount else {
+            guard y == Board.yCount else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             return result

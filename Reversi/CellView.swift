@@ -52,10 +52,10 @@ public class CellView: UIView {
         super.layoutSubviews()
         
         button.frame = bounds
-        layoutDiskView()
+        layoutDiskView(disk: _disk)
     }
     
-    private func layoutDiskView() {
+    private func layoutDiskView(disk: Disk?) {
         let cellSize = bounds.size
         let diskDiameter = Swift.min(cellSize.width, cellSize.height) * 0.8
         let diskSize: CGSize
@@ -73,7 +73,7 @@ public class CellView: UIView {
     
     func setDisk(_ disk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
         let diskBefore: Disk? = _disk
-        _disk = disk
+        self._disk = disk
         let diskAfter: Disk? = _disk
         if animated {
             switch (diskBefore, diskAfter) {
@@ -84,13 +84,13 @@ public class CellView: UIView {
                 fallthrough
             case (.some, .none):
                 UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
-                    self?.layoutDiskView()
+                    self?.layoutDiskView(disk: disk)
                 }, completion: { finished in
                     completion?(finished)
                 })
             case (.some, .some):
                 UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
-                    self?.layoutDiskView()
+                    self?.layoutDiskView(disk: disk)
                 }, completion: { [weak self] finished in
                     guard let self = self else { return }
                     if self.diskView.disk == self._disk {
@@ -102,7 +102,7 @@ public class CellView: UIView {
                     }
                     self.diskView.disk = diskAfter
                     UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
-                        self?.layoutDiskView()
+                        self?.layoutDiskView(disk: disk)
                     }, completion: { finished in
                         completion?(finished)
                     })

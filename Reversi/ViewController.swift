@@ -36,8 +36,8 @@ class ViewController: UIViewController {
         }
 
         updateMessageViews(side: turn)
-        darkCountLabel.text = "\(boardView.countDisks(of: .dark))"
-        lightCountLabel.text = "\(boardView.countDisks(of: .light))"
+        darkCountLabel.text = "\(countDisks(of: .dark))"
+        lightCountLabel.text = "\(countDisks(of: .light))"
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -90,8 +90,8 @@ class ViewController: UIViewController {
 
     /// ゲームの結果をメッセージラベルに表示
     private func updateMessageViewsForGameEnd() {
-        let darkCount = boardView.countDisks(of: .dark)
-        let lightCount = boardView.countDisks(of: .light)
+        let darkCount = countDisks(of: .dark)
+        let lightCount = countDisks(of: .light)
         if darkCount == lightCount {
             // 引き分けを表示
             messageDiskView.isHidden = true
@@ -239,6 +239,23 @@ class ViewController: UIViewController {
 
     // MARK: - Reversi logics
 
+    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
+    /// - Parameter side: 数えるディスクの色です。
+    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
+    private func countDisks(of side: Disk) -> Int {
+        var count = 0
+
+        for y in 0..<Board.yCount {
+            for x in 0..<Board.xCount {
+                if boardView.diskAt(DiskCoordinate(x: x, y: y)) == side {
+                    count +=  1
+                }
+            }
+        }
+
+        return count
+    }
+
     private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: DiskCoordinate) -> [DiskCoordinate] {
         let directions = [
             (x: -1, y: -1),
@@ -296,8 +313,8 @@ class ViewController: UIViewController {
     private func validMoves(for side: Disk) -> [DiskCoordinate] {
         var coordinates = [DiskCoordinate]()
 
-        for y in 0..<BoardView.yCount {
-            for x in 0..<BoardView.xCount {
+        for y in 0..<Board.yCount {
+            for x in 0..<Board.xCount {
                 if canPlaceDisk(side, atX: x, y: y) {
                     coordinates.append(DiskCoordinate(x: x, y: y))
                 }
@@ -338,8 +355,8 @@ class ViewController: UIViewController {
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
                                                           boardStates: self.boardView.getBoardStates()))
 
-                self.darkCountLabel.text = "\(self.boardView.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.boardView.countDisks(of: .light))"
+                self.darkCountLabel.text = "\(self.countDisks(of: .dark))"
+                self.lightCountLabel.text = "\(self.countDisks(of: .light))"
             }
         } else {
             DispatchQueue.main.async { [weak self] in
@@ -354,8 +371,8 @@ class ViewController: UIViewController {
                                                           lightControlIndex: self.lightPlayerControl.selectedSegmentIndex,
                                                           boardStates: self.boardView.getBoardStates()))
 
-                self.darkCountLabel.text = "\(self.boardView.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.boardView.countDisks(of: .light))"
+                self.darkCountLabel.text = "\(self.countDisks(of: .dark))"
+                self.lightCountLabel.text = "\(self.countDisks(of: .light))"
             }
         }
     }

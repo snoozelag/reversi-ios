@@ -20,6 +20,7 @@
 		D642BDDC23AA137C00396732 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDDB23AA137C00396732 /* BoardView.swift */; };
 		F018BCED2452FFA100950771 /* GameIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = F018BCEC2452FFA100950771 /* GameIO.swift */; };
 		F018BCEF245305EA00950771 /* AdditionalTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = F018BCEE245305EA00950771 /* AdditionalTypes.swift */; };
+		F018BCF424554EAE00950771 /* Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = F018BCF324554EAE00950771 /* Board.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,6 +51,7 @@
 		D642BDDB23AA137C00396732 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		F018BCEC2452FFA100950771 /* GameIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameIO.swift; sourceTree = "<group>"; };
 		F018BCEE245305EA00950771 /* AdditionalTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdditionalTypes.swift; sourceTree = "<group>"; };
+		F018BCF324554EAE00950771 /* Board.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Board.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -118,6 +120,7 @@
 				D642BDBC23A9FE4700396732 /* Assets.xcassets */,
 				D642BDBE23A9FE4700396732 /* LaunchScreen.storyboard */,
 				D642BDC123A9FE4700396732 /* Info.plist */,
+				F018BCF224554D8E00950771 /* Models */,
 				D636B3A123D43203007F370F /* Views */,
 				D636B3A423D432D3007F370F /* DataTypes */,
 			);
@@ -131,6 +134,14 @@
 				D642BDCC23A9FE4700396732 /* Info.plist */,
 			);
 			path = ReversiTests;
+			sourceTree = "<group>";
+		};
+		F018BCF224554D8E00950771 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F018BCF324554EAE00950771 /* Board.swift */,
+			);
+			name = Models;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -236,6 +247,7 @@
 			files = (
 				D636B39F23D35043007F370F /* DiskView.swift in Sources */,
 				F018BCED2452FFA100950771 /* GameIO.swift in Sources */,
+				F018BCF424554EAE00950771 /* Board.swift in Sources */,
 				D642BDD623AA0B3900396732 /* CellView.swift in Sources */,
 				D642BDD823AA0B5700396732 /* Disk.swift in Sources */,
 				D642BDB823A9FE4500396732 /* ViewController.swift in Sources */,
