@@ -22,19 +22,14 @@ struct BoardState {
 
 class GameIO {
 
-    private static let darkSymbol = "x"
-    private static let lightSymbol = "o"
-    private static let noneSymbol = "-"
-
     private static var path: String {
         (NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first! as NSString).appendingPathComponent("Game")
     }
 
     /// ゲームの状態をファイルに書き出し、保存します。
-    /// TODO: 引数はあとで整理する
     static func saveGame(diskState: DiskState) throws {
         var output: String = ""
-        output += (diskState.turn == .dark) ? darkSymbol : lightSymbol
+        output += DiskSymbol(disk: diskState.turn).rawValue
         output += String(diskState.darkControlIndex)
         output += String(diskState.lightControlIndex)
         output += "\n"
@@ -47,20 +42,11 @@ class GameIO {
         }
     }
 
-    static func getBoardStatesString(_ boardStates: [[BoardState]]) -> String {
+    static private func getBoardStatesString(_ boardStates: [[BoardState]]) -> String {
         var output = ""
         for boardStatesInLine in boardStates {
             for boardState in boardStatesInLine {
-                if let disk = boardState.disk {
-                    switch disk {
-                    case .dark:
-                        output += GameIO.darkSymbol
-                    case .light:
-                        output += GameIO.lightSymbol
-                    }
-                } else {
-                    output += GameIO.noneSymbol
-                }
+                output += DiskSymbol(disk: boardState.disk).rawValue
             }
             output += "\n"
         }
@@ -68,105 +54,115 @@ class GameIO {
     }
 
     /// ゲームの状態をファイルから読み込み、復元します。
-    static func loadGame() throws
-        -> DiskState {
+    static func loadGame() throws -> DiskState {
 
-            let input = try String(contentsOfFile: path, encoding: .utf8)
-            var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
+        let input = try String(contentsOfFile: path, encoding: .utf8)
+        var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
 
-            guard var line = lines.popFirst() else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-
-            let turn: Disk = try diskForSymbol(line.popFirst().flatMap(String.init))
-            let darkPlayerIndex = try playerTypeForSymbol(line.popFirst().flatMap(String.init)).rawValue
-            let lightPlayerIndex = try playerTypeForSymbol(line.popFirst().flatMap(String.init)).rawValue
-
-            guard lines.count == BoardView.yCount else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-
-            let boardStates: [[BoardState]] = try {
-                var result = [[BoardState]]()
-                var y = 0
-                while let line = lines.popFirst() {
-                    var lineResult = [BoardState]()
-                    var x = 0
-                    for character in line {
-                        let disk = Disk(symbol: "\(character)")
-                        let coordinate = DiskCoordinate(x: x, y: y)
-                        let state = BoardState(disk: disk, coordinate: coordinate)
-                        lineResult.append(state)
-                        x += 1
-                    }
-                    guard x == BoardView.xCount else {
-                        throw FileIOError.read(path: path, cause: nil)
-                    }
-                    result.append(lineResult)
-                    y += 1
-                }
-                guard y == BoardView.yCount else {
-                    throw FileIOError.read(path: path, cause: nil)
-                }
-                return result
-            }()
-
-            return DiskState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
-    }
-
-    private static func playerTypeForSymbol(_ playerSymbol: String?) throws -> PlayerType {
-        guard let playerSymbol = playerSymbol,
-            let playerNumber = Int(playerSymbol.description),
-            let playerType = PlayerType(rawValue: playerNumber) else {
-                throw FileIOError.read(path: path, cause: nil)
-        }
-        return playerType
-    }
-
-    private static func diskForSymbol(_ diskSymbol: String?) throws -> Disk {
-        guard let diskSymbol = diskSymbol, let disk = Disk(symbol: diskSymbol) else {
+        guard var line = lines.popFirst() else {
             throw FileIOError.read(path: path, cause: nil)
         }
-        return disk
+
+        let turn: Disk = try {
+            guard let disk = line.popFirst().flatMap({  DiskSymbol(rawValue: String($0)) })?.disk else {
+                throw FileIOError.read(path: path, cause: nil)
+            }
+            return disk
+        }()
+
+        let darkPlayerIndex: Int = try {
+            guard let playerTypeIndex = line.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
+                throw FileIOError.read(path: path, cause: nil)
+            }
+            return playerTypeIndex
+        }()
+
+        let lightPlayerIndex: Int = try {
+            guard let playerTypeIndex = line.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
+                throw FileIOError.read(path: path, cause: nil)
+            }
+            return playerTypeIndex
+        }()
+
+        let boardStates: [[BoardState]] = try {
+            var result = [[BoardState]]()
+            var y = 0
+            while let line = lines.popFirst() {
+                var lineResult = [BoardState]()
+                var x = 0
+                for character in line {
+                    guard let symbol = DiskSymbol(rawValue: "\(character)") else {
+                        throw FileIOError.read(path: path, cause: nil)
+                    }
+                    let coordinate = DiskCoordinate(x: x, y: y)
+                    let state = BoardState(disk: symbol.disk, coordinate: coordinate)
+                    lineResult.append(state)
+                    x += 1
+                }
+                guard x == BoardView.xCount else {
+                    throw FileIOError.read(path: path, cause: nil)
+                }
+                result.append(lineResult)
+                y += 1
+            }
+            guard y == BoardView.yCount else {
+                throw FileIOError.read(path: path, cause: nil)
+            }
+            return result
+        }()
+
+        return DiskState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, boardStates: boardStates)
     }
 
     enum FileIOError: Error {
         case write(path: String, cause: Error?)
         case read(path: String, cause: Error?)
     }
-
 }
 
 // MARK: File-private extensions
 
-extension Disk {
+extension GameIO {
 
-    init?<S: StringProtocol>(symbol: S) {
-        switch symbol {
-        case "x":
-            self = .dark
-        case "o":
-            self = .light
-        default:
-            return nil
+    private enum DiskSymbol: String {
+        case dark = "x"
+        case light = "o"
+        case none = "-"
+
+        init(disk: Disk?) {
+            switch disk {
+            case .dark:
+                self = .dark
+            case .light:
+                self = .light
+            default:
+                self = .none
+            }
+        }
+
+        var disk: Disk? {
+            switch self {
+            case .dark:
+                return .dark
+            case .light:
+                return .light
+            default:
+                return nil
+            }
         }
     }
 
-    init(index: Int) {
-        switch index {
-        case 0:
-            self = .dark
-        case 1:
-            self = .light
-        default:
-            preconditionFailure("Illegal index: \(index)")
-        }
-    }
+    private enum PlayerTypeSymbol: String {
+        case human = "0"
+        case computer = "1"
 
-    var index: Int {
-        switch self {
-        case .dark: return 0
-        case .light: return 1
+        var index: Int {
+            switch self {
+            case .human:
+                return 0
+            case .computer:
+                return 1
+            }
         }
     }
 }
