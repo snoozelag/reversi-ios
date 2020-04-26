@@ -1,5 +1,5 @@
 //
-//  GameIO.swift
+//  GameStore.swift
 //  Reversi
 //
 //  Created by teruto.yamasaki on 2020/04/24.
@@ -8,19 +8,7 @@
 
 import UIKit
 
-struct GameState {
-    var turn: Disk = .dark
-    var darkControlIndex: Int = 0
-    var lightControlIndex: Int = 0
-    var board = Board()
-}
-
-struct SquireState {
-    var disk: Disk?
-    var coordinate: DiskCoordinate
-}
-
-class GameIO {
+class GameStore {
 
     private static var path: String {
         (NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first! as NSString).appendingPathComponent("Game")
@@ -125,7 +113,7 @@ class GameIO {
 
 // MARK: File-private extensions
 
-extension GameIO {
+extension GameStore {
 
     private enum DiskSymbol: String {
         case dark = "x"

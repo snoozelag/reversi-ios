@@ -29,7 +29,7 @@ class ViewController: UIViewController {
         boardView.delegate = self
         
         do {
-            gameState = try GameIO.loadGame()
+            gameState = try GameStore.loadGame()
             setupViews(gameState: gameState)
         } catch _ {
             gameState = GameState()
@@ -57,7 +57,7 @@ class ViewController: UIViewController {
         darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
         lightPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
 
-        try? GameIO.saveGame(gameState: gameState)
+        try? GameStore.saveGame(gameState: gameState)
 
         darkPlayerControl.selectedSegmentIndex = gameState.darkControlIndex
         lightPlayerControl.selectedSegmentIndex = gameState.lightControlIndex
@@ -145,7 +145,7 @@ class ViewController: UIViewController {
     /// 人間、コンピュータを変更
     private func changePlayer(side: Disk, player: PlayerType) {
 
-        try? GameIO.saveGame(gameState: gameState)
+        try? GameStore.saveGame(gameState: gameState)
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
@@ -329,7 +329,7 @@ class ViewController: UIViewController {
                 cleanUp()
 
                 completion?(isFinished)
-                try? GameIO.saveGame(gameState: self.gameState)
+                try? GameStore.saveGame(gameState: self.gameState)
 
                 self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
@@ -342,7 +342,7 @@ class ViewController: UIViewController {
                     self.boardView.setDisk(squire: SquireState(disk: squire.disk, coordinate: coordinate), animated: false)
                 }
                 completion?(true)
-                try? GameIO.saveGame(gameState: self.gameState)
+                try? GameStore.saveGame(gameState: self.gameState)
 
                 self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"

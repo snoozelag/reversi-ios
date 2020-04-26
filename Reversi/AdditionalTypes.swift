@@ -10,6 +10,18 @@ import Foundation
 
 // MARK: Additional types
 
+struct GameState {
+    var turn: Disk = .dark
+    var darkControlIndex: Int = 0
+    var lightControlIndex: Int = 0
+    var board = Board()
+}
+
+struct SquireState {
+    var disk: Disk?
+    var coordinate: DiskCoordinate
+}
+
 enum PlayerType: Int {
     case human = 0
     case computer = 1
