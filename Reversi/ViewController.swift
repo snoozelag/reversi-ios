@@ -276,23 +276,21 @@ class ViewController: UIViewController {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
-    private func canPlaceDisk(_ disk: Disk, atX x: Int, y: Int) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(placing: SquireState(disk: disk, coordinate: DiskCoordinate(x: x, y: y))).isEmpty
+    private func canPlaceDisk(squire: SquireState) -> Bool {
+        !flippedDiskCoordinatesByPlacingDisk(placing: squire).isEmpty
     }
 
     /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
     /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
     private func validMoves(for side: Disk) -> [DiskCoordinate] {
         var coordinates = [DiskCoordinate]()
-
-        for y in 0..<Board.yCount {
-            for x in 0..<Board.xCount {
-                if canPlaceDisk(side, atX: x, y: y) {
-                    coordinates.append(DiskCoordinate(x: x, y: y))
+        for line in gameState.board.lines {
+            for squire in line {
+                if canPlaceDisk(squire: squire) {
+                    coordinates.append(squire.coordinate)
                 }
             }
         }
-
         return coordinates
     }
 
