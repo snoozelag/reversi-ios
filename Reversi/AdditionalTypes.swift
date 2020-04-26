@@ -15,11 +15,20 @@ struct GameState {
     var darkPlayerType: PlayerType = .human
     var lightPlayerType: PlayerType = .human
     var board = Board()
+
+    var turnPlayer: PlayerType {
+        return (turn == .dark) ? darkPlayerType : lightPlayerType
+    }
 }
 
 struct SquireState {
     var disk: Disk?
     var coordinate: DiskCoordinate
+}
+
+struct DiskCoordinate {
+    var x: Int
+    var y: Int
 }
 
 enum PlayerType: Int {

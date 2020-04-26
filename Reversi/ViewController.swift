@@ -1,10 +1,5 @@
 import UIKit
 
-struct DiskCoordinate {
-    var x: Int
-    var y: Int
-}
-
 class ViewController: UIViewController {
 
     @IBOutlet private var boardView: BoardView!
@@ -19,7 +14,8 @@ class ViewController: UIViewController {
     /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
-    private var playerCancellers: [Disk: Canceller] = [:]
+    private var darkCanceller: Canceller?
+    private var lightCanceller: Canceller?
     private var viewHasAppeared: Bool = false
     private var gameState = GameState()
     
@@ -30,15 +26,12 @@ class ViewController: UIViewController {
         
         do {
             gameState = try GameStore.loadGame()
-            setupViews(gameState: gameState)
+            configureViews(gameState: gameState)
         } catch _ {
             gameState = GameState()
-            setupViews(gameState: gameState)
+            configureViews(gameState: gameState)
+            try? GameStore.saveGame(gameState: gameState)
         }
-
-        updateMessageViews(side: gameState.turn)
-        darkCountLabel.text = String(gameState.board.countDisks(of: .dark))
-        lightCountLabel.text = String(gameState.board.countDisks(of: .light))
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -46,34 +39,59 @@ class ViewController: UIViewController {
         
         if !viewHasAppeared {
             viewHasAppeared = true
-            waitForPlayer()
+
+            if gameState.turnPlayer == .computer {
+                playTurnOfComputer(turn: gameState.turn) {
+
+                }
+            }
         }
     }
 
-    private func setupViews(gameState: GameState) {
+    private func configureViews(gameState: GameState) {
         boardView.setUp(lines: gameState.board.lines)
         darkPlayerControl.selectedSegmentIndex = gameState.darkPlayerType.rawValue
         lightPlayerControl.selectedSegmentIndex = gameState.lightPlayerType.rawValue
-        try? GameStore.saveGame(gameState: gameState)
+
+        updateMessageViews(side: gameState.turn)
+        darkCountLabel.text = String(gameState.board.countDisks(of: .dark))
+        lightCountLabel.text = String(gameState.board.countDisks(of: .light))
     }
 
-    // MARK: - Inputs
+    // MARK: - Button Action
 
-    /// リセットボタンが押された場合に呼ばれるハンドラーです。
-    /// アラートを表示して、ゲームを初期化して良いか確認し、
-    /// "OK" が選択された場合ゲームを初期化します。
     @IBAction private func pressResetButton(_ sender: UIButton) {
         showResetGameDialog()
     }
 
     @IBAction private func darkPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
-        let player = PlayerType(rawValue: sender.selectedSegmentIndex)!
-        changePlayer(side: .dark, player: player)
+        let playerType = PlayerType(rawValue: sender.selectedSegmentIndex)!
+        gameState.darkPlayerType = playerType
+        try? GameStore.saveGame(gameState: gameState)
+
+        darkCanceller?.cancel()
+        lightCanceller?.cancel()
+
+        if !isAnimating, case .computer = playerType, gameState.turn == .dark {
+            playTurnOfComputer(turn: .dark) {
+
+            }
+        }
     }
 
     @IBAction private func lightPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
-        let player = PlayerType(rawValue: sender.selectedSegmentIndex)!
-        changePlayer(side: .light, player: player)
+        let playerType = PlayerType(rawValue: sender.selectedSegmentIndex)!
+        gameState.lightPlayerType = playerType
+        try? GameStore.saveGame(gameState: gameState)
+
+        darkCanceller?.cancel()
+        lightCanceller?.cancel()
+
+        if !isAnimating, case .computer = playerType, gameState.turn == .light {
+            playTurnOfComputer(turn: .light) {
+
+            }
+        }
     }
 
     // MARK: - Views
@@ -131,47 +149,21 @@ class ViewController: UIViewController {
         present(alertController, animated: true)
     }
 
-    /// 人間、コンピュータを変更
-    private func changePlayer(side: Disk, player: PlayerType) {
-
-        try? GameStore.saveGame(gameState: gameState)
-
-        if let canceller = playerCancellers[side] {
-            canceller.cancel()
-        }
-
-        if !isAnimating, side == gameState.turn, case .computer = player {
-            playTurnOfComputer()
-        }
-    }
-
     /// ゲームのリセット
     private func resetGame() {
         animationCanceller?.cancel()
         animationCanceller = nil
+        darkCanceller?.cancel()
+        darkCanceller = nil
+        lightCanceller?.cancel()
+        lightCanceller = nil
 
-        for side in Disk.allCases {
-            playerCancellers[side]?.cancel()
-            playerCancellers.removeValue(forKey: side)
-        }
-
-        let newGameState = GameState()
-        setupViews(gameState: newGameState)
-        waitForPlayer()
+        gameState = GameState()
+        configureViews(gameState: gameState)
+        try? GameStore.saveGame(gameState: gameState)
     }
 
     // MARK: Game management
-
-    /// プレイヤーの行動を待ちます。
-    private func waitForPlayer() {
-        let playerControl = (gameState.turn == .dark) ? darkPlayerControl : lightPlayerControl
-        switch PlayerType(rawValue: playerControl!.selectedSegmentIndex)! {
-        case .human:
-            break
-        case .computer:
-            playTurnOfComputer()
-        }
-    }
 
     /// プレイヤーの行動後、そのプレイヤーのターンを終了して次のターンを開始します。
     /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
@@ -189,33 +181,45 @@ class ViewController: UIViewController {
             }
         } else {
             updateMessageViews(side: gameState.turn)
-            waitForPlayer()
+
+            if gameState.turnPlayer == .computer {
+                playTurnOfComputer(turn: gameState.turn) {
+
+                }
+            }
         }
     }
 
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
-    private func playTurnOfComputer() {
-        let coordinate = validMoves(for: gameState.turn).randomElement()!
+    private func playTurnOfComputer(turn: Disk, completion: () -> Void) {
+        guard let coordinate = validMoves(for: turn).randomElement() else { return }
 
-        playerActivityIndicators[gameState.turn.rawValue].startAnimating()
+        playerActivityIndicators[turn.rawValue].startAnimating()
 
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
-            self.playerActivityIndicators[self.gameState.turn.rawValue].stopAnimating()
-            self.playerCancellers[self.gameState.turn] = nil
+            self.playerActivityIndicators[turn.rawValue].stopAnimating()
+            switch turn {
+            case .dark:
+                self.darkCanceller = nil
+            case .light:
+                self.lightCanceller = nil
+            }
         }
         let canceller = Canceller(cleanUp)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            guard let self = self else { return }
-            if canceller.isCancelled { return }
-            cleanUp()
+        switch turn {
+        case .dark:
+            darkCanceller = canceller
+        case .light:
+            lightCanceller = canceller
+        }
 
-            try! self.placeDisk(squire: SquireState(disk: self.gameState.turn, coordinate: coordinate), animated: true) { [weak self] _ in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            canceller.cancel()
+            try? self.placeDisk(squire: SquireState(disk: turn, coordinate: coordinate), animated: true) { [weak self] _ in
                 self?.nextTurn()
             }
         }
-
-        playerCancellers[gameState.turn] = canceller
     }
 
     // MARK: - Reversi logics
@@ -371,10 +375,7 @@ class ViewController: UIViewController {
 }
 
 extension ViewController: BoardViewDelegate {
-    /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます。
-    /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
+    
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate) {
         if isAnimating { return }
         let playerControl = (gameState.turn == .dark) ? darkPlayerControl : lightPlayerControl

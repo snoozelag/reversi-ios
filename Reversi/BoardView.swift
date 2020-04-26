@@ -1,10 +1,7 @@
 import UIKit
 
 protocol BoardViewDelegate: AnyObject {
-    /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます。
-    /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
+    /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate)
 }
 
