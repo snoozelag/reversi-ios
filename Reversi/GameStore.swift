@@ -87,28 +87,23 @@ class GameStore {
 
     /// 文字列から盤面配列を取り出し
     private static func getLines(linesString: ArraySlice<Substring>) throws -> [[SquireState]] {
-        var linesString = linesString
         var lines = [[SquireState]]()
-        var y = 0
-        while let lineString = linesString.popFirst() {
+        for (y, lineString) in linesString.enumerated() {
             var line = [SquireState]()
-            var x = 0
-            for character in lineString {
-                guard let symbol = DiskSymbol(rawValue: "\(character)") else {
-                    throw FileIOError.read(path: path, cause: nil)
+            for (x, squireCharacter) in lineString.enumerated() {
+                guard let symbol = DiskSymbol(rawValue: String(squireCharacter)) else {
+                      throw FileIOError.read(path: path, cause: nil)
                 }
                 let coordinate = DiskCoordinate(x: x, y: y)
                 let squire = SquireState(disk: symbol.disk, coordinate: coordinate)
                 line.append(squire)
-                x += 1
             }
-            guard x == Board.xCount else {
+            guard line.count == Board.xCount else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             lines.append(line)
-            y += 1
         }
-        guard y == Board.yCount else {
+        guard lines.count == Board.yCount else {
             throw FileIOError.read(path: path, cause: nil)
         }
         return lines
