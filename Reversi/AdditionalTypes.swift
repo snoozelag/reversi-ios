@@ -12,8 +12,8 @@ import Foundation
 
 struct GameState {
     var turn: Disk = .dark
-    var darkControlIndex: Int = 0
-    var lightControlIndex: Int = 0
+    var darkPlayerType: PlayerType = .human
+    var lightPlayerType: PlayerType = .human
     var board = Board()
 }
 

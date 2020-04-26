@@ -127,10 +127,10 @@
 		F018BCF224554D8E00950771 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				F018BCEC2452FFA100950771 /* GameStore.swift */,
 				F018BCF324554EAE00950771 /* Board.swift */,
 				D642BDD723AA0B5700396732 /* Disk.swift */,
 				F018BCEE245305EA00950771 /* AdditionalTypes.swift */,
+				F018BCEC2452FFA100950771 /* GameStore.swift */,
 			);
 			name = Models;
 			sourceTree = "<group>";

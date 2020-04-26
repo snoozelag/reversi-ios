@@ -10,6 +10,11 @@ import UIKit
 
 class GameStore {
 
+    enum FileIOError: Error {
+        case write(path: String, cause: Error?)
+        case read(path: String, cause: Error?)
+    }
+
     private static var path: String {
         (NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first! as NSString).appendingPathComponent("Game")
     }
@@ -18,27 +23,16 @@ class GameStore {
     static func saveGame(gameState: GameState) throws {
         var output: String = ""
         output += DiskSymbol(disk: gameState.turn).rawValue
-        output += String(gameState.darkControlIndex)
-        output += String(gameState.lightControlIndex)
+        output += String(gameState.darkPlayerType.rawValue)
+        output += String(gameState.lightPlayerType.rawValue)
         output += "\n"
-        output += getSquireStatesString(lines: gameState.board.lines)
+        output += getString(lines: gameState.board.lines)
 
         do {
             try output.write(toFile: path, atomically: true, encoding: .utf8)
         } catch let error {
             throw FileIOError.read(path: path, cause: error)
         }
-    }
-
-    static private func getSquireStatesString(lines: [[SquireState]]) -> String {
-        var output = ""
-        for line in lines {
-            for squire in line {
-                output += DiskSymbol(disk: squire.disk).rawValue
-            }
-            output += "\n"
-        }
-        return output
     }
 
     /// ゲームの状態をファイルから読み込み、復元します。
@@ -51,32 +45,47 @@ class GameStore {
             throw FileIOError.read(path: path, cause: nil)
         }
 
+        let lines = try getLines(linesString: linesString)
+
         let turn: Disk = try {
-            guard let disk = lineString.popFirst().flatMap({  DiskSymbol(rawValue: String($0)) })?.disk else {
+            guard let disk = lineString.popFirst().flatMap({ DiskSymbol(rawValue: String($0)) })?.disk else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             return disk
         }()
 
-        let darkPlayerIndex: Int = try {
-            guard let playerTypeIndex = lineString.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
+        let darkPlayerType: PlayerType = try {
+            guard let playerIndexString = lineString.popFirst().flatMap({ String($0) }),
+                let playerType = Int(playerIndexString).flatMap({ PlayerType(rawValue: $0) }) else {
                 throw FileIOError.read(path: path, cause: nil)
             }
-            return playerTypeIndex
+            return playerType
         }()
 
-        let lightPlayerIndex: Int = try {
-            guard let playerTypeIndex = lineString.popFirst().flatMap({ PlayerTypeSymbol(rawValue: String($0)) })?.index else {
+        let lightPlayerType: PlayerType = try {
+            guard let playerIndexString = lineString.popFirst().flatMap({ String($0) }),
+                let playerType = Int(playerIndexString).flatMap({ PlayerType(rawValue: $0) }) else {
                 throw FileIOError.read(path: path, cause: nil)
             }
-            return playerTypeIndex
+            return playerType
         }()
 
-        let lines = try getLines(linesString: linesString)
-
-        return GameState(turn: turn, darkControlIndex: darkPlayerIndex, lightControlIndex: lightPlayerIndex, board: Board(lines: lines))
+        return GameState(turn: turn, darkPlayerType: darkPlayerType, lightPlayerType: lightPlayerType, board: Board(lines: lines))
     }
 
+    /// 盤面配列から文字列に変換
+    private static func getString(lines: [[SquireState]]) -> String {
+        var output = ""
+        for line in lines {
+            for squire in line {
+                output += DiskSymbol(disk: squire.disk).rawValue
+            }
+            output += "\n"
+        }
+        return output
+    }
+
+    /// 文字列から盤面配列を取り出し
     private static func getLines(linesString: ArraySlice<Substring>) throws -> [[SquireState]] {
         var linesString = linesString
         var lines = [[SquireState]]()
@@ -103,11 +112,6 @@ class GameStore {
             throw FileIOError.read(path: path, cause: nil)
         }
         return lines
-    }
-
-    enum FileIOError: Error {
-        case write(path: String, cause: Error?)
-        case read(path: String, cause: Error?)
     }
 }
 
@@ -139,20 +143,6 @@ extension GameStore {
                 return .light
             default:
                 return nil
-            }
-        }
-    }
-
-    private enum PlayerTypeSymbol: String {
-        case human = "0"
-        case computer = "1"
-
-        var index: Int {
-            switch self {
-            case .human:
-                return 0
-            case .computer:
-                return 1
             }
         }
     }

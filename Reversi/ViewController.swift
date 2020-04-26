@@ -37,8 +37,8 @@ class ViewController: UIViewController {
         }
 
         updateMessageViews(side: gameState.turn)
-        darkCountLabel.text = "\(gameState.board.countDisks(of: .dark))"
-        lightCountLabel.text = "\(gameState.board.countDisks(of: .light))"
+        darkCountLabel.text = String(gameState.board.countDisks(of: .dark))
+        lightCountLabel.text = String(gameState.board.countDisks(of: .light))
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -51,21 +51,10 @@ class ViewController: UIViewController {
     }
 
     private func setupViews(gameState: GameState) {
-
         boardView.setUp(lines: gameState.board.lines)
-
-        darkPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
-        lightPlayerControl.selectedSegmentIndex = PlayerType.human.rawValue
-
+        darkPlayerControl.selectedSegmentIndex = gameState.darkPlayerType.rawValue
+        lightPlayerControl.selectedSegmentIndex = gameState.lightPlayerType.rawValue
         try? GameStore.saveGame(gameState: gameState)
-
-        darkPlayerControl.selectedSegmentIndex = gameState.darkControlIndex
-        lightPlayerControl.selectedSegmentIndex = gameState.lightControlIndex
-        gameState.board.lines.forEach({ line in
-            line.forEach({ squire in
-                boardView.setDisk(squire: squire, animated: false)
-            })
-        })
     }
 
     // MARK: - Inputs
