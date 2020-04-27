@@ -153,27 +153,31 @@ public class BoardView: UIView {
     /// `coordinates` から先頭の座標を取得してそのセルに `disk` を置き、
     /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
     /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
-    func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping (Bool) -> Void)
+    func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping () -> Void)
         where C.Element == DiskCoordinate
     {
-        guard let coordinate = coordinates.first else {
-            completion(true)
-            return
+
+        let cleanUp: () -> Void = { [weak self] in
+            self?.animationCanceller = nil
         }
+        animationCanceller = Canceller(cleanUp)
+
         let animationCanceller = self.animationCanceller!
 
-        let squire = SquireState(disk: disk, coordinate: coordinate)
-        setDisk(squire: squire, animated: true) { [weak self] isFinished in
-            guard let self = self else { return }
-            if animationCanceller.isCancelled { return }
-            if isFinished {
-                self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
-            } else {
-                for coordinate in coordinates {
-                    self.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
-                }
-                completion(false)
-            }
+        let squires = coordinates.map { SquireState(disk: disk, coordinate: $0) }
+        setDisks(squires: squires, animated: true) {
+            animationCanceller.cancel()
+            completion()
+        }
+    }
+
+    func setDisks<C: Collection>(squires: C, animated: Bool, completion: (() -> Void)?) where C.Element == SquireState {
+        guard !squires.isEmpty else {
+            completion?()
+            return
+        }
+        setDisk(squire: squires.first!, animated: animated) { _ in
+            self.setDisks(squires: squires.dropFirst(), animated: animated, completion: completion)
         }
     }
 }

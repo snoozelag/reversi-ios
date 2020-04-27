@@ -295,21 +295,13 @@ class ViewController: UIViewController {
         gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
         try? GameStore.saveGame(gameState: self.gameState)
 
-        let cleanUp: () -> Void = { [weak self] in
-            self?.boardView.animationCanceller = nil
-        }
-        boardView.animationCanceller = Canceller(cleanUp)
-        boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] isFinished in
+        boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] in
             guard let self = self else { return }
-            guard let canceller = self.boardView.animationCanceller else { return }
-            if canceller.isCancelled { return }
-            cleanUp()
-
-            completion?(isFinished)
-
+            completion?(true)
             self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
             self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
         }
+
     }
 }
 
