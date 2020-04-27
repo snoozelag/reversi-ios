@@ -11,11 +11,6 @@ class ViewController: UIViewController {
     @IBOutlet private var lightCountLabel: UILabel!
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
 
-    /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
-    private var animationCanceller: Canceller?
-    private var isAnimating: Bool { animationCanceller != nil }
-    private var darkCanceller: Canceller?
-    private var lightCanceller: Canceller?
     private var viewHasAppeared: Bool = false
     private var gameState = GameState()
     
@@ -69,10 +64,10 @@ class ViewController: UIViewController {
         gameState.darkPlayerType = playerType
         try? GameStore.saveGame(gameState: gameState)
 
-        darkCanceller?.cancel()
-        lightCanceller?.cancel()
+        boardView.darkCanceller?.cancel()
+        boardView.lightCanceller?.cancel()
 
-        if !isAnimating, case .computer = playerType, gameState.turn == .dark {
+        if !boardView.isAnimating, case .computer = playerType, gameState.turn == .dark {
             playTurnOfComputer(turn: .dark) {
 
             }
@@ -84,10 +79,10 @@ class ViewController: UIViewController {
         gameState.lightPlayerType = playerType
         try? GameStore.saveGame(gameState: gameState)
 
-        darkCanceller?.cancel()
-        lightCanceller?.cancel()
+        boardView.darkCanceller?.cancel()
+        boardView.lightCanceller?.cancel()
 
-        if !isAnimating, case .computer = playerType, gameState.turn == .light {
+        if !boardView.isAnimating, case .computer = playerType, gameState.turn == .light {
             playTurnOfComputer(turn: .light) {
 
             }
@@ -151,13 +146,7 @@ class ViewController: UIViewController {
 
     /// ゲームのリセット
     private func resetGame() {
-        animationCanceller?.cancel()
-        animationCanceller = nil
-        darkCanceller?.cancel()
-        darkCanceller = nil
-        lightCanceller?.cancel()
-        lightCanceller = nil
-
+        boardView.cancelAnimations()
         gameState = GameState()
         configureViews(gameState: gameState)
         try? GameStore.saveGame(gameState: gameState)
@@ -201,22 +190,22 @@ class ViewController: UIViewController {
             self.playerActivityIndicators[turn.rawValue].stopAnimating()
             switch turn {
             case .dark:
-                self.darkCanceller = nil
+                self.boardView.darkCanceller = nil
             case .light:
-                self.lightCanceller = nil
+                self.boardView.lightCanceller = nil
             }
         }
         let canceller = Canceller(cleanUp)
         switch turn {
         case .dark:
-            darkCanceller = canceller
+            boardView.darkCanceller = canceller
         case .light:
-            lightCanceller = canceller
+            boardView.lightCanceller = canceller
         }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             canceller.cancel()
-            try? self.placeDisk(squire: SquireState(disk: turn, coordinate: coordinate), animated: true) { [weak self] _ in
+            try? self.placeDisk(placing: SquireState(disk: turn, coordinate: coordinate), animated: true) { [weak self] _ in
                 self?.nextTurn()
             }
         }
@@ -296,25 +285,28 @@ class ViewController: UIViewController {
     ///     このクロージャは値を返さず、アニメーションが完了したかを示す真偽値を受け取ります。
     ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
     /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
-    private func placeDisk(squire: SquireState, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
-        let diskCoordinates = flippedDiskCoordinates(by: squire)
-        if diskCoordinates.isEmpty {
-            throw DiskPlacementError(disk: squire.disk!, coordinate: squire.coordinate)
+    private func placeDisk(placing: SquireState, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
+        let flippedDiskCoordinates = self.flippedDiskCoordinates(by: placing)
+        if flippedDiskCoordinates.isEmpty {
+            throw DiskPlacementError(disk: placing.disk!, coordinate: placing.coordinate)
         }
+
+        let coordinates = [placing.coordinate] + flippedDiskCoordinates
+        gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
+        try? GameStore.saveGame(gameState: self.gameState)
 
         if isAnimated {
             let cleanUp: () -> Void = { [weak self] in
-                self?.animationCanceller = nil
+                self?.boardView.animationCanceller = nil
             }
-            animationCanceller = Canceller(cleanUp)
-            animateSettingDisks(at: [squire.coordinate] + diskCoordinates, to: squire.disk!) { [weak self] isFinished in
+            boardView.animationCanceller = Canceller(cleanUp)
+            boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] isFinished in
                 guard let self = self else { return }
-                guard let canceller = self.animationCanceller else { return }
+                guard let canceller = self.boardView.animationCanceller else { return }
                 if canceller.isCancelled { return }
                 cleanUp()
 
                 completion?(isFinished)
-                try? GameStore.saveGame(gameState: self.gameState)
 
                 self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
@@ -322,45 +314,14 @@ class ViewController: UIViewController {
         } else {
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                self.boardView.setDisk(squire: squire, animated: false)
-                for coordinate in diskCoordinates {
-                    self.boardView.setDisk(squire: SquireState(disk: squire.disk, coordinate: coordinate), animated: false)
+                self.boardView.setDisk(squire: placing, animated: false)
+                for coordinate in flippedDiskCoordinates {
+                    self.boardView.setDisk(squire: SquireState(disk: placing.disk, coordinate: coordinate), animated: false)
                 }
                 completion?(true)
-                try? GameStore.saveGame(gameState: self.gameState)
 
                 self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
                 self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
-            }
-        }
-    }
-
-    /// `coordinates` で指定されたセルに、アニメーションしながら順番に `disk` を置く。
-    /// `coordinates` から先頭の座標を取得してそのセルに `disk` を置き、
-    /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
-    /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
-    private func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping (Bool) -> Void)
-        where C.Element == DiskCoordinate
-    {
-        guard let coordinate = coordinates.first else {
-            completion(true)
-            return
-        }
-
-        let animationCanceller = self.animationCanceller!
-
-        let squire = SquireState(disk: disk, coordinate: coordinate)
-        gameState.board.setDisk(squire: squire)
-        boardView.setDisk(squire: squire, animated: true) { [weak self] isFinished in
-            guard let self = self else { return }
-            if animationCanceller.isCancelled { return }
-            if isFinished {
-                self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
-            } else {
-                for coordinate in coordinates {
-                    self.boardView.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
-                }
-                completion(false)
             }
         }
     }
@@ -369,11 +330,11 @@ class ViewController: UIViewController {
 extension ViewController: BoardViewDelegate {
     
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate) {
-        if isAnimating { return }
+        if boardView.isAnimating { return }
         let playerControl = (gameState.turn == .dark) ? darkPlayerControl : lightPlayerControl
         guard case .human = PlayerType(rawValue: playerControl!.selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
-        try? placeDisk(squire: SquireState(disk: gameState.turn, coordinate: coordinate), animated: true) { [weak self] _ in
+        try? placeDisk(placing: SquireState(disk: gameState.turn, coordinate: coordinate), animated: true) { [weak self] _ in
             self?.nextTurn()
         }
     }

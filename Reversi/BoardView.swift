@@ -12,6 +12,11 @@ public class BoardView: UIView {
     private var cellViews = [CellView]()
     private var actions = [CellSelectionAction]()
 
+    var animationCanceller: Canceller?
+    var isAnimating: Bool { animationCanceller != nil }
+    var darkCanceller: Canceller?
+    var lightCanceller: Canceller?
+
     override init(frame: CGRect) {
         super.init(frame: frame)
     }
@@ -97,6 +102,15 @@ public class BoardView: UIView {
         }
     }
 
+    func cancelAnimations() {
+        animationCanceller?.cancel()
+        animationCanceller = nil
+        darkCanceller?.cancel()
+        darkCanceller = nil
+        lightCanceller?.cancel()
+        lightCanceller = nil
+    }
+    
     /// 盤をセット
     func setDisks(lines: [[SquireState]]) {
         for line in lines {
@@ -132,6 +146,37 @@ public class BoardView: UIView {
             result.append(boardStatesInLine)
         }
         return result
+    }
+
+
+    /// `coordinates` で指定されたセルに、アニメーションしながら順番に `disk` を置く。
+    /// `coordinates` から先頭の座標を取得してそのセルに `disk` を置き、
+    /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
+    /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
+    func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping (Bool) -> Void)
+        where C.Element == DiskCoordinate
+    {
+        guard let coordinate = coordinates.first else {
+            completion(true)
+            return
+        }
+
+        let animationCanceller = self.animationCanceller!
+
+        let squire = SquireState(disk: disk, coordinate: coordinate)
+//        gameState.board.setDisk(squire: squire)
+        setDisk(squire: squire, animated: true) { [weak self] isFinished in
+            guard let self = self else { return }
+            if animationCanceller.isCancelled { return }
+            if isFinished {
+                self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
+            } else {
+                for coordinate in coordinates {
+                    self.setDisk(squire: SquireState(disk: disk, coordinate: coordinate), animated: false)
+                }
+                completion(false)
+            }
+        }
     }
 }
 

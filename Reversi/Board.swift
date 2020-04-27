@@ -61,6 +61,18 @@ class Board {
         lines[squire.coordinate.y][squire.coordinate.x] = squire
     }
 
+    func setDisks(squires: [SquireState]) {
+        squires.forEach { squire in
+            lines[squire.coordinate.y][squire.coordinate.x] = squire
+        }
+    }
+
+    func setDisks(coordinates: [DiskCoordinate], to disk: Disk) {
+        coordinates.forEach { coordinate in
+            lines[coordinate.y][coordinate.x] = SquireState(disk: disk, coordinate: coordinate)
+        }
+    }
+
     func squireAt(_ coordinate: DiskCoordinate) -> SquireState? {
         guard coordinate.y >= 0, coordinate.x >= 0, coordinate.y < Board.xCount, coordinate.x < Board.yCount else { return nil }
         return lines[coordinate.y][coordinate.x]
