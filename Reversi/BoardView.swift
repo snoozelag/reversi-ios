@@ -160,11 +160,9 @@ public class BoardView: UIView {
             completion(true)
             return
         }
-
         let animationCanceller = self.animationCanceller!
 
         let squire = SquireState(disk: disk, coordinate: coordinate)
-//        gameState.board.setDisk(squire: squire)
         setDisk(squire: squire, animated: true) { [weak self] isFinished in
             guard let self = self else { return }
             if animationCanceller.isCancelled { return }

@@ -205,7 +205,7 @@ class ViewController: UIViewController {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             canceller.cancel()
-            try? self.placeDisk(placing: SquireState(disk: turn, coordinate: coordinate), animated: true) { [weak self] _ in
+            try? self.animatePlaceDisk(placing: SquireState(disk: turn, coordinate: coordinate)) { [weak self] _ in
                 self?.nextTurn()
             }
         }
@@ -285,7 +285,7 @@ class ViewController: UIViewController {
     ///     このクロージャは値を返さず、アニメーションが完了したかを示す真偽値を受け取ります。
     ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
     /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
-    private func placeDisk(placing: SquireState, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
+    private func animatePlaceDisk(placing: SquireState, completion: ((Bool) -> Void)? = nil) throws {
         let flippedDiskCoordinates = self.flippedDiskCoordinates(by: placing)
         if flippedDiskCoordinates.isEmpty {
             throw DiskPlacementError(disk: placing.disk!, coordinate: placing.coordinate)
@@ -295,34 +295,20 @@ class ViewController: UIViewController {
         gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
         try? GameStore.saveGame(gameState: self.gameState)
 
-        if isAnimated {
-            let cleanUp: () -> Void = { [weak self] in
-                self?.boardView.animationCanceller = nil
-            }
-            boardView.animationCanceller = Canceller(cleanUp)
-            boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] isFinished in
-                guard let self = self else { return }
-                guard let canceller = self.boardView.animationCanceller else { return }
-                if canceller.isCancelled { return }
-                cleanUp()
+        let cleanUp: () -> Void = { [weak self] in
+            self?.boardView.animationCanceller = nil
+        }
+        boardView.animationCanceller = Canceller(cleanUp)
+        boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] isFinished in
+            guard let self = self else { return }
+            guard let canceller = self.boardView.animationCanceller else { return }
+            if canceller.isCancelled { return }
+            cleanUp()
 
-                completion?(isFinished)
+            completion?(isFinished)
 
-                self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
-            }
-        } else {
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.boardView.setDisk(squire: placing, animated: false)
-                for coordinate in flippedDiskCoordinates {
-                    self.boardView.setDisk(squire: SquireState(disk: placing.disk, coordinate: coordinate), animated: false)
-                }
-                completion?(true)
-
-                self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
-            }
+            self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
+            self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
         }
     }
 }
@@ -334,7 +320,7 @@ extension ViewController: BoardViewDelegate {
         let playerControl = (gameState.turn == .dark) ? darkPlayerControl : lightPlayerControl
         guard case .human = PlayerType(rawValue: playerControl!.selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
-        try? placeDisk(placing: SquireState(disk: gameState.turn, coordinate: coordinate), animated: true) { [weak self] _ in
+        try? animatePlaceDisk(placing: SquireState(disk: gameState.turn, coordinate: coordinate)) { [weak self] _ in
             self?.nextTurn()
         }
     }
