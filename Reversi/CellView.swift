@@ -1,7 +1,5 @@
 import UIKit
 
-private let animationDuration: TimeInterval = 0.25
-
 public class CellView: UIView {
     private let button: UIButton = UIButton()
     private let diskView: DiskView = DiskView()
@@ -67,50 +65,59 @@ public class CellView: UIView {
         diskView.alpha = currentDisk == nil ? 0.0 : 1.0
     }
     
-    func setDisk(_ disk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
-        let diskBefore: Disk? = currentDisk
-        self.currentDisk = disk
-        let diskAfter: Disk? = currentDisk
+    func setDisk(_ newDisk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+        let beforeDisk: Disk? = currentDisk
+        self.currentDisk = newDisk
         if animated {
-            switch (diskBefore, diskAfter) {
+            switch (beforeDisk, newDisk) {
             case (.none, .none):
                 completion?(true)
             case (.none, .some(let animationDisk)):
-                diskView.disk = animationDisk
-                fallthrough
+                diskView.configure(disk: animationDisk)
+                animateLayoutDiskView(disk: newDisk, completion: completion)
             case (.some, .none):
-                UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
-                    self?.layoutDiskView(disk: disk)
-                }, completion: { finished in
-                    completion?(finished)
-                })
-            case (.some, .some):
-                UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
-                    self?.layoutDiskView(disk: disk)
-                }, completion: { [weak self] finished in
-                    guard let self = self else { return }
-                    if self.diskView.disk == self.currentDisk {
-                        completion?(finished)
-                    }
-                    guard let diskAfter = self.currentDisk else {
-                        completion?(finished)
-                        return
-                    }
-                    self.diskView.disk = diskAfter
-                    UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
-                        self?.layoutDiskView(disk: disk)
-                    }, completion: { finished in
-                        completion?(finished)
-                    })
-                })
+                animateLayoutDiskView(disk: newDisk, completion: completion)
+            case (.some, .some(let newDisk)):
+                animateLayoutDiskView2(newDisk: newDisk, completion: completion)
             }
         } else {
-            if let diskAfter = diskAfter {
-                diskView.disk = diskAfter
+            if let newDisk = newDisk {
+                diskView.configure(disk: newDisk)
             }
             completion?(true)
             setNeedsLayout()
         }
+    }
+
+    func animateLayoutDiskView(disk: Disk?, completion: ((Bool) -> Void)?) {
+        let animationDuration: TimeInterval = 0.25
+        UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
+            self?.layoutDiskView(disk: disk)
+        }, completion: { finished in
+            completion?(finished)
+        })
+    }
+
+    func animateLayoutDiskView2(newDisk: Disk, completion: ((Bool) -> Void)?) {
+        let animationDuration: TimeInterval = 0.25
+        UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
+               self?.layoutDiskView(disk: newDisk)
+           }, completion: { [weak self] finished in
+               guard let self = self else { return }
+               if self.diskView.disk == newDisk {
+                   completion?(finished)
+               }
+//               guard let newDisk = newDisk else {
+//                   completion?(finished)
+//                   return
+//               }
+               self.diskView.configure(disk: newDisk)
+               UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
+                   self?.layoutDiskView(disk: newDisk)
+               }, completion: { finished in
+                   completion?(finished)
+               })
+           })
     }
     
     public func addTarget(_ target: Any?, action: Selector, for controlEvents: UIControl.Event) {

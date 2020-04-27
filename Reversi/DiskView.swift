@@ -1,9 +1,12 @@
 import UIKit
 
 class DiskView: UIView {
-    /// このビューが表示するディスクの色を決定します。
-    var disk: Disk = .dark {
-        didSet { setNeedsDisplay() }
+
+    private(set) var disk: Disk = .dark
+
+    func configure(disk: Disk) {
+        self.disk = disk
+        setNeedsDisplay()
     }
     
     /// Interface Builder からディスクの色を設定するためのプロパティです。 `"dark"` か `"light"` の文字列を設定します。

@@ -94,7 +94,7 @@ class ViewController: UIViewController {
     /// 現在のターンをメッセージラベルに表示
     private func updateMessageViews(side: Disk) {
         messageDiskView.isHidden = false
-        messageDiskView.disk = side
+        messageDiskView.configure(disk: side)
         messageLabel.text = "'s turn"
     }
 
@@ -110,7 +110,7 @@ class ViewController: UIViewController {
             // 勝者を表示
             let winner: Disk = (darkCount > lightCount) ? .dark : .light
             messageDiskView.isHidden = false
-            messageDiskView.disk = winner
+            messageDiskView.configure(disk: winner)
             messageLabel.text = " won"
         }
     }
