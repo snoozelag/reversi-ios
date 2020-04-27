@@ -224,7 +224,7 @@ class ViewController: UIViewController {
 
     // MARK: - Reversi logics
 
-    private func flippedDiskCoordinatesByPlacingDisk(placing: SquireState) -> [DiskCoordinate] {
+    private func flippedDiskCoordinates(by placing: SquireState) -> [DiskCoordinate] {
 
         let isNotPresent = (gameState.board.squireAt(placing.coordinate)!.disk == nil)
         guard isNotPresent else {
@@ -271,22 +271,16 @@ class ViewController: UIViewController {
         return diskCoordinates
     }
 
-    /// `x`, `y` で指定されたセルに、 `disk` が置けるかを調べます。
-    /// ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要があります。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
-    private func canPlaceDisk(squire: SquireState) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(placing: squire).isEmpty
-    }
-
     /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
     /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
     private func validMoves(for side: Disk) -> [DiskCoordinate] {
         var coordinates = [DiskCoordinate]()
         for line in gameState.board.lines {
             for squire in line {
-                if canPlaceDisk(squire: squire) {
+                let placing = SquireState(disk: side, coordinate: squire.coordinate)
+                // ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要がある
+                let canPlaceDisk = !flippedDiskCoordinates(by: placing).isEmpty
+                if canPlaceDisk {
                     coordinates.append(squire.coordinate)
                 }
             }
@@ -303,7 +297,7 @@ class ViewController: UIViewController {
     ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
     /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
     private func placeDisk(squire: SquireState, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
-        let diskCoordinates = flippedDiskCoordinatesByPlacingDisk(placing: squire)
+        let diskCoordinates = flippedDiskCoordinates(by: squire)
         if diskCoordinates.isEmpty {
             throw DiskPlacementError(disk: squire.disk!, coordinate: squire.coordinate)
         }
