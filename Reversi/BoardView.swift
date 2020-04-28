@@ -97,7 +97,7 @@ public class BoardView: UIView {
                 let cellView = cellViewAt(squire.coordinate)!
                 let action = CellSelectionAction(boardView: self, coordinate: squire.coordinate)
                 actions.append(action) // To retain the `action`
-                cellView.addTarget(action, action: #selector(action.selectCell), for: .touchUpInside)
+                cellView.addTarget(action, action: #selector(action.cellViewDidSelect(_:)), for: .touchUpInside)
             }
         }
     }
@@ -191,7 +191,7 @@ private class CellSelectionAction: NSObject {
         self.coordinate = coordinate
     }
     
-    @objc func selectCell() {
+    @objc func cellViewDidSelect(_ sender: CellView) {
         guard let boardView = boardView else { return }
         boardView.delegate?.boardView(boardView, didSelectCellAt: coordinate)
     }

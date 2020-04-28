@@ -2,7 +2,7 @@ import UIKit
 
 class DiskView: UIView {
 
-    private(set) var disk: Disk = .dark
+    private var disk: Disk = .dark
 
     func configure(disk: Disk) {
         self.disk = disk
@@ -34,6 +34,22 @@ class DiskView: UIView {
         guard let context = UIGraphicsGetCurrentContext() else { return }
         context.setFillColor(disk.cgColor)
         context.fillEllipse(in: bounds)
+    }
+
+    func layout(_ newDisk: Disk?, cellSize: CGSize) {
+        let diskDiameter = Swift.min(cellSize.width, cellSize.height) * 0.8
+        let diskSize: CGSize = {
+            if newDisk == nil || self.disk == newDisk {
+                return CGSize(width: diskDiameter, height: diskDiameter)
+            } else {
+                return CGSize(width: 0, height: diskDiameter)
+            }
+        }()
+        frame = CGRect(
+            origin: CGPoint(x: (cellSize.width - diskSize.width) / 2, y: (cellSize.height - diskSize.height) / 2),
+            size: diskSize
+        )
+        alpha = (newDisk == nil) ? 0.0 : 1.0
     }
 }
 

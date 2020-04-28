@@ -1,10 +1,10 @@
 import UIKit
 
 public class CellView: UIView {
-    private let button: UIButton = UIButton()
-    private let diskView: DiskView = DiskView()
+    private let button = UIButton()
+    private let diskView = DiskView()
     
-    private var currentDisk: Disk?
+    private var disk: Disk?
     
     override public init(frame: CGRect) {
         super.init(frame: frame)
@@ -46,39 +46,23 @@ public class CellView: UIView {
         super.layoutSubviews()
         
         button.frame = bounds
-        layoutDiskView(disk: currentDisk)
+        diskView.layout(disk, cellSize: bounds.size)
     }
-    
-    private func layoutDiskView(disk: Disk?) {
-        let cellSize = bounds.size
-        let diskDiameter = Swift.min(cellSize.width, cellSize.height) * 0.8
-        let diskSize: CGSize
-        if currentDisk == nil || diskView.disk == currentDisk {
-            diskSize = CGSize(width: diskDiameter, height: diskDiameter)
-        } else {
-            diskSize = CGSize(width: 0, height: diskDiameter)
-        }
-        diskView.frame = CGRect(
-            origin: CGPoint(x: (cellSize.width - diskSize.width) / 2, y: (cellSize.height - diskSize.height) / 2),
-            size: diskSize
-        )
-        diskView.alpha = currentDisk == nil ? 0.0 : 1.0
-    }
-    
+
     func setDisk(_ newDisk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
-        let beforeDisk: Disk? = currentDisk
-        self.currentDisk = newDisk
+        let oldDisk = self.disk
+        self.disk = newDisk
         if animated {
-            switch (beforeDisk, newDisk) {
+            switch (oldDisk, newDisk) {
             case (.none, .none):
                 completion?(true)
-            case (.none, .some(let animationDisk)):
-                diskView.configure(disk: animationDisk)
-                animateLayoutDiskView(disk: newDisk, completion: completion)
+            case (.none, .some(let newDisk)):
+                diskView.configure(disk: newDisk)
+                animateSetDisk(newDisk, completion: completion)
             case (.some, .none):
-                animateLayoutDiskView(disk: newDisk, completion: completion)
+                animateSetDisk(completion: completion)
             case (.some, .some(let newDisk)):
-                animateLayoutDiskView2(newDisk: newDisk, completion: completion)
+                flipAnimateSetDisk(newDisk, completion: completion)
             }
         } else {
             if let newDisk = newDisk {
@@ -88,32 +72,32 @@ public class CellView: UIView {
             setNeedsLayout()
         }
     }
-
-    func animateLayoutDiskView(disk: Disk?, completion: ((Bool) -> Void)?) {
+    
+    private func animateSetDisk(_ newDisk: Disk? = nil, completion: ((Bool) -> Void)?) {
+        self.disk = newDisk
         let animationDuration: TimeInterval = 0.25
         UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
-            self?.layoutDiskView(disk: disk)
+            guard let self = self else { return }
+            self.diskView.layout(newDisk, cellSize: self.bounds.size)
         }, completion: { finished in
             completion?(finished)
         })
     }
 
-    func animateLayoutDiskView2(newDisk: Disk, completion: ((Bool) -> Void)?) {
+    private func flipAnimateSetDisk(_ newDisk: Disk, completion: ((Bool) -> Void)?) {
+        self.disk = newDisk
         let animationDuration: TimeInterval = 0.25
         UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
-               self?.layoutDiskView(disk: newDisk)
+            guard let self = self else { return }
+            self.diskView.layout(newDisk, cellSize: self.bounds.size)
            }, completion: { [weak self] finished in
                guard let self = self else { return }
-               if self.diskView.disk == newDisk {
-                   completion?(finished)
-               }
-//               guard let newDisk = newDisk else {
+//               if self.diskView.disk == newDisk { // TODO: これが不要か判断
 //                   completion?(finished)
-//                   return
 //               }
                self.diskView.configure(disk: newDisk)
-               UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
-                   self?.layoutDiskView(disk: newDisk)
+               UIView.animate(withDuration: animationDuration / 2, animations: {
+                self.diskView.layout(newDisk, cellSize: self.bounds.size)
                }, completion: { finished in
                    completion?(finished)
                })
