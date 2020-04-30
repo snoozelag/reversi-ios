@@ -35,9 +35,7 @@ class ViewController: UIViewController {
         if !viewHasAppeared {
             viewHasAppeared = true
 
-            if case .computer = gameState.turnPlayer {
-                playOnComputer()
-            }
+            playOnTurnIfComputer()
         }
     }
 
@@ -61,20 +59,14 @@ class ViewController: UIViewController {
         let playerType = PlayerType(rawValue: sender.selectedSegmentIndex)!
         gameState.darkPlayerType = playerType
         try? GameStore.saveGame(gameState: gameState)
-
-        if case .computer = playerType, gameState.turn == .dark {
-            playOnComputer()
-        }
+        playOnTurnIfComputer()
     }
 
     @IBAction private func lightPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
         let playerType = PlayerType(rawValue: sender.selectedSegmentIndex)!
         gameState.lightPlayerType = playerType
         try? GameStore.saveGame(gameState: gameState)
-
-        if case .computer = playerType, gameState.turn == .light {
-            playOnComputer()
-        }
+        playOnTurnIfComputer()
     }
 
     // MARK: - Views
@@ -132,8 +124,8 @@ class ViewController: UIViewController {
         present(alertController, animated: true)
     }
 
-
-    private func playOnComputer() {
+    private func playOnTurnIfComputer() {
+        guard case .computer = gameState.turnPlayer else { return }
         if let validCoordinates = gameState.board.validMoveCoordinates(for: gameState.turn) {
             inquireComputer(validCoordinates: validCoordinates, turn: gameState.turn, completion: { [weak self] disk, coordinate in
                 self?.placeDisk(disk, coordinate: coordinate)
@@ -155,13 +147,10 @@ class ViewController: UIViewController {
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     private func changeTurn() {
         gameState.turn.flip()
-        let turn = gameState.turn
-        switch gameState.board.hasNextTurn(turn) {
+        switch gameState.board.hasNextTurn(gameState.turn) {
         case .valid:
-            updateMessageViews(side: turn)
-            if gameState.turnPlayer == .computer {
-                playOnComputer()
-            }
+            updateMessageViews(side: gameState.turn)
+            playOnTurnIfComputer()
         case .pass:
             changeTurn()
         case .end:
