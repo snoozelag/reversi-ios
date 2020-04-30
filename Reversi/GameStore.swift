@@ -20,13 +20,13 @@ class GameStore {
     }
 
     /// ゲームの状態をファイルに書き出し、保存します。
-    static func saveGame(gameState: GameState) throws {
+    static func saveGame(game: Game) throws {
         var output: String = ""
-        output += DiskSymbol(disk: gameState.turn).rawValue
-        output += String(gameState.darkPlayerType.rawValue)
-        output += String(gameState.lightPlayerType.rawValue)
+        output += DiskSymbol(disk: game.turn).rawValue
+        output += String(game.darkPlayerType.rawValue)
+        output += String(game.lightPlayerType.rawValue)
         output += "\n"
-        output += getString(lines: gameState.board.lines)
+        output += getString(lines: game.board.lines)
 
         do {
             try output.write(toFile: path, atomically: true, encoding: .utf8)
@@ -36,7 +36,7 @@ class GameStore {
     }
 
     /// ゲームの状態をファイルから読み込み、復元します。
-    static func loadGame() throws -> GameState {
+    static func loadGame() throws -> Game {
 
         let input = try String(contentsOfFile: path, encoding: .utf8)
         var linesString: ArraySlice<Substring> = input.split(separator: "\n")[...]
@@ -70,7 +70,7 @@ class GameStore {
             return playerType
         }()
 
-        return GameState(turn: turn, darkPlayerType: darkPlayerType, lightPlayerType: lightPlayerType, board: Board(lines: lines))
+        return Game(turn: turn, darkPlayerType: darkPlayerType, lightPlayerType: lightPlayerType, board: Board(lines: lines))
     }
 
     /// 盤面配列から文字列に変換

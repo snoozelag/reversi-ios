@@ -12,7 +12,7 @@ class ViewController: UIViewController {
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
 
     private var viewHasAppeared: Bool = false
-    private var gameState = GameState()
+    private var game = Game()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -20,12 +20,12 @@ class ViewController: UIViewController {
         boardView.delegate = self
         
         do {
-            gameState = try GameStore.loadGame()
-            configureViews(gameState: gameState)
+            game = try GameStore.loadGame()
+            configureViews(game: game)
         } catch _ {
-            gameState = GameState()
-            configureViews(gameState: gameState)
-            try? GameStore.saveGame(gameState: gameState)
+            game = Game()
+            configureViews(game: game)
+            try? GameStore.saveGame(game: game)
         }
     }
 
@@ -39,14 +39,14 @@ class ViewController: UIViewController {
         }
     }
 
-    private func configureViews(gameState: GameState) {
-        boardView.setUp(lines: gameState.board.lines)
-        darkPlayerControl.selectedSegmentIndex = gameState.darkPlayerType.rawValue
-        lightPlayerControl.selectedSegmentIndex = gameState.lightPlayerType.rawValue
+    private func configureViews(game: Game) {
+        boardView.setUp(lines: game.board.lines)
+        darkPlayerControl.selectedSegmentIndex = game.darkPlayerType.rawValue
+        lightPlayerControl.selectedSegmentIndex = game.lightPlayerType.rawValue
 
-        updateMessageViews(side: gameState.turn)
-        darkCountLabel.text = String(gameState.board.countDisks(of: .dark))
-        lightCountLabel.text = String(gameState.board.countDisks(of: .light))
+        updateMessageViews(side: game.turn)
+        darkCountLabel.text = String(game.board.countDisks(of: .dark))
+        lightCountLabel.text = String(game.board.countDisks(of: .light))
     }
 
     // MARK: - Button Action
@@ -57,15 +57,15 @@ class ViewController: UIViewController {
 
     @IBAction private func darkPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
         let playerType = PlayerType(rawValue: sender.selectedSegmentIndex)!
-        gameState.darkPlayerType = playerType
-        try? GameStore.saveGame(gameState: gameState)
+        game.darkPlayerType = playerType
+        try? GameStore.saveGame(game: game)
         playOnTurnIfComputer()
     }
 
     @IBAction private func lightPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
         let playerType = PlayerType(rawValue: sender.selectedSegmentIndex)!
-        gameState.lightPlayerType = playerType
-        try? GameStore.saveGame(gameState: gameState)
+        game.lightPlayerType = playerType
+        try? GameStore.saveGame(game: game)
         playOnTurnIfComputer()
     }
 
@@ -80,8 +80,8 @@ class ViewController: UIViewController {
 
     /// ゲームの結果をメッセージラベルに表示
     private func updateMessageViewsForGameEnd() {
-        let darkCount = gameState.board.countDisks(of: .dark)
-        let lightCount = gameState.board.countDisks(of: .light)
+        let darkCount = game.board.countDisks(of: .dark)
+        let lightCount = game.board.countDisks(of: .light)
         if darkCount == lightCount {
             // 引き分けを表示
             messageDiskView.isHidden = true
@@ -125,9 +125,9 @@ class ViewController: UIViewController {
     }
 
     private func playOnTurnIfComputer() {
-        guard case .computer = gameState.turnPlayer else { return }
-        if let validCoordinates = gameState.board.validMoveCoordinates(for: gameState.turn) {
-            inquireComputer(validCoordinates: validCoordinates, turn: gameState.turn, completion: { [weak self] disk, coordinate in
+        guard case .computer = game.turnPlayer else { return }
+        if let validCoordinates = game.board.validMoveCoordinates(for: game.turn) {
+            inquireComputer(validCoordinates: validCoordinates, turn: game.turn, completion: { [weak self] disk, coordinate in
                 self?.placeDisk(disk, coordinate: coordinate)
             })
         }
@@ -135,9 +135,9 @@ class ViewController: UIViewController {
 
     /// ゲームのリセット
     private func resetGame() {
-        gameState = GameState()
-        configureViews(gameState: gameState)
-        try? GameStore.saveGame(gameState: gameState)
+        game = Game()
+        configureViews(game: game)
+        try? GameStore.saveGame(game: game)
     }
 
     // MARK: Game management
@@ -146,10 +146,10 @@ class ViewController: UIViewController {
     /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     private func changeTurn() {
-        gameState.turn.flip()
-        switch gameState.board.hasNextTurn(gameState.turn) {
+        game.turn.flip()
+        switch game.board.hasNextTurn(game.turn) {
         case .valid:
-            updateMessageViews(side: gameState.turn)
+            updateMessageViews(side: game.turn)
             playOnTurnIfComputer()
         case .pass:
             changeTurn()
@@ -172,19 +172,19 @@ class ViewController: UIViewController {
 
     private func placeDisk(_ disk: Disk, coordinate: DiskCoordinate) {
         let placing = SquireState(disk: disk, coordinate: coordinate)
-        let flippedDiskCoordinates = gameState.board.flippedDiskCoordinates(by: placing)
+        let flippedDiskCoordinates = game.board.flippedDiskCoordinates(by: placing)
         guard !flippedDiskCoordinates.isEmpty else {
             return
         }
 
         let coordinates = [placing.coordinate] + flippedDiskCoordinates
-        gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
-        try? GameStore.saveGame(gameState: self.gameState)
+        game.board.setDisks(coordinates: coordinates, to: placing.disk!)
+        try? GameStore.saveGame(game: self.game)
 
         boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] in
             guard let self = self else { return }
-            self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
-            self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
+            self.darkCountLabel.text = "\(self.game.board.countDisks(of: .dark))"
+            self.lightCountLabel.text = "\(self.game.board.countDisks(of: .light))"
             self.changeTurn()
         }
     }
@@ -193,7 +193,7 @@ class ViewController: UIViewController {
 extension ViewController: BoardViewDelegate {
     
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate) {
-        guard !boardView.isAnimating, case .human = gameState.turnPlayer else { return }
-        placeDisk(gameState.turn, coordinate: coordinate)
+        guard !boardView.isAnimating, case .human = game.turnPlayer else { return }
+        placeDisk(game.turn, coordinate: coordinate)
     }
 }

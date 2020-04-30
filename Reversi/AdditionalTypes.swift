@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: Additional types
 
-struct GameState {
+struct Game {
     var turn: Disk = .dark
     var darkPlayerType: PlayerType = .human
     var lightPlayerType: PlayerType = .human
