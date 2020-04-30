@@ -12,10 +12,7 @@ public class BoardView: UIView {
     private var cellViews = [CellView]()
     private var actions = [CellSelectionAction]()
 
-    var animationCanceller: Canceller?
-    var isAnimating: Bool { animationCanceller != nil }
-    var darkCanceller: Canceller?
-    var lightCanceller: Canceller?
+    var isAnimating: Bool = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -101,15 +98,6 @@ public class BoardView: UIView {
             }
         }
     }
-
-    func cancelAnimations() {
-        animationCanceller?.cancel()
-        animationCanceller = nil
-        darkCanceller?.cancel()
-        darkCanceller = nil
-        lightCanceller?.cancel()
-        lightCanceller = nil
-    }
     
     /// 盤をセット
     func setDisks(lines: [[SquireState]]) {
@@ -154,19 +142,10 @@ public class BoardView: UIView {
     /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
     /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
     func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping () -> Void)
-        where C.Element == DiskCoordinate
-    {
-
-        let cleanUp: () -> Void = { [weak self] in
-            self?.animationCanceller = nil
-        }
-        animationCanceller = Canceller(cleanUp)
-
-        let animationCanceller = self.animationCanceller!
+        where C.Element == DiskCoordinate {
 
         let squires = coordinates.map { SquireState(disk: disk, coordinate: $0) }
         setDisks(squires: squires, animated: true) {
-            animationCanceller.cancel()
             completion()
         }
     }

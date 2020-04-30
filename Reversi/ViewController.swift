@@ -35,10 +35,8 @@ class ViewController: UIViewController {
         if !viewHasAppeared {
             viewHasAppeared = true
 
-            if gameState.turnPlayer == .computer {
-                playTurnOfComputer(turn: gameState.turn) {
-
-                }
+            if case .computer = gameState.turnPlayer {
+                playOnComputer()
             }
         }
     }
@@ -64,13 +62,8 @@ class ViewController: UIViewController {
         gameState.darkPlayerType = playerType
         try? GameStore.saveGame(gameState: gameState)
 
-        boardView.darkCanceller?.cancel()
-        boardView.lightCanceller?.cancel()
-
-        if !boardView.isAnimating, case .computer = playerType, gameState.turn == .dark {
-            playTurnOfComputer(turn: .dark) {
-
-            }
+        if case .computer = playerType, gameState.turn == .dark {
+            playOnComputer()
         }
     }
 
@@ -79,13 +72,8 @@ class ViewController: UIViewController {
         gameState.lightPlayerType = playerType
         try? GameStore.saveGame(gameState: gameState)
 
-        boardView.darkCanceller?.cancel()
-        boardView.lightCanceller?.cancel()
-
-        if !boardView.isAnimating, case .computer = playerType, gameState.turn == .light {
-            playTurnOfComputer(turn: .light) {
-
-            }
+        if case .computer = playerType, gameState.turn == .light {
+            playOnComputer()
         }
     }
 
@@ -132,21 +120,29 @@ class ViewController: UIViewController {
     }
 
     /// パス
-    private func showPassDialog() {
+    private func showPassDialog(dismissHandler: @escaping () -> Void) {
         let alertController = UIAlertController(
             title: "Pass",
             message: "Cannot place a disk.",
             preferredStyle: .alert
         )
-        alertController.addAction(UIAlertAction(title: "Dismiss", style: .default) { [weak self] _ in
-            self?.nextTurn()
+        alertController.addAction(UIAlertAction(title: "Dismiss", style: .default) { _ in
+            dismissHandler()
         })
         present(alertController, animated: true)
     }
 
+
+    private func playOnComputer() {
+        if let validCoordinates = gameState.board.validMoveCoordinates(for: gameState.turn) {
+            inquireComputer(validCoordinates: validCoordinates, turn: gameState.turn, completion: { [weak self] disk, coordinate in
+                self?.placeDisk(disk, coordinate: coordinate)
+            })
+        }
+    }
+
     /// ゲームのリセット
     private func resetGame() {
-        boardView.cancelAnimations()
         gameState = GameState()
         configureViews(gameState: gameState)
         try? GameStore.saveGame(gameState: gameState)
@@ -157,163 +153,58 @@ class ViewController: UIViewController {
     /// プレイヤーの行動後、そのプレイヤーのターンを終了して次のターンを開始します。
     /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
-    private func nextTurn() {
-
+    private func changeTurn() {
         gameState.turn.flip()
-
-        if validMoves(for: gameState.turn).isEmpty {
-            if validMoves(for: gameState.turn.flipped).isEmpty {
-                updateMessageViewsForGameEnd()
-            } else {
-                updateMessageViews(side: gameState.turn)
-                showPassDialog()
-            }
-        } else {
-            updateMessageViews(side: gameState.turn)
-
+        let turn = gameState.turn
+        switch gameState.board.hasNextTurn(turn) {
+        case .valid:
+            updateMessageViews(side: turn)
             if gameState.turnPlayer == .computer {
-                playTurnOfComputer(turn: gameState.turn) {
-
-                }
+                playOnComputer()
             }
+        case .pass:
+            changeTurn()
+        case .end:
+            updateMessageViewsForGameEnd()
         }
     }
 
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
-    private func playTurnOfComputer(turn: Disk, completion: () -> Void) {
-        guard let coordinate = validMoves(for: turn).randomElement() else { return }
-
+    private func inquireComputer(validCoordinates: [DiskCoordinate], turn: Disk, completion: @escaping (Disk, DiskCoordinate) -> Void) {
         playerActivityIndicators[turn.rawValue].startAnimating()
-
-        let cleanUp: () -> Void = { [weak self] in
-            guard let self = self else { return }
-            self.playerActivityIndicators[turn.rawValue].stopAnimating()
-            switch turn {
-            case .dark:
-                self.boardView.darkCanceller = nil
-            case .light:
-                self.boardView.lightCanceller = nil
-            }
-        }
-        let canceller = Canceller(cleanUp)
-        switch turn {
-        case .dark:
-            boardView.darkCanceller = canceller
-        case .light:
-            boardView.lightCanceller = canceller
-        }
-
+        guard let randomCoordinate = validCoordinates.randomElement() else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            canceller.cancel()
-
-            let placing = SquireState(disk: turn, coordinate: coordinate)
-            let flippedDiskCoordinates = self.flippedDiskCoordinates(by: placing)
-            guard !flippedDiskCoordinates.isEmpty else {
-                return
-            }
-
-            let coordinates = [placing.coordinate] + flippedDiskCoordinates
-            self.gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
-            try? GameStore.saveGame(gameState: self.gameState)
-
-            self.boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] in
-                guard let self = self else { return }
-                self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
-                self.nextTurn()
-            }
+            self.playerActivityIndicators[turn.rawValue].stopAnimating()
+            completion(turn, randomCoordinate)
         }
     }
 
     // MARK: - Reversi logics
 
-    private func flippedDiskCoordinates(by placing: SquireState) -> [DiskCoordinate] {
-
-        let isNotPresent = (gameState.board.squireAt(placing.coordinate)!.disk == nil)
-        guard isNotPresent else {
-            return []
+    private func placeDisk(_ disk: Disk, coordinate: DiskCoordinate) {
+        let placing = SquireState(disk: disk, coordinate: coordinate)
+        let flippedDiskCoordinates = gameState.board.flippedDiskCoordinates(by: placing)
+        guard !flippedDiskCoordinates.isEmpty else {
+            return
         }
 
-        var diskCoordinates = [DiskCoordinate]()
+        let coordinates = [placing.coordinate] + flippedDiskCoordinates
+        gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
+        try? GameStore.saveGame(gameState: self.gameState)
 
-        let directions = [
-            (x: -1, y: -1),
-            (x:  0, y: -1),
-            (x:  1, y: -1),
-            (x:  1, y:  0),
-            (x:  1, y:  1),
-            (x:  0, y:  1),
-            (x: -1, y:  0),
-            (x: -1, y:  1),
-        ]
-
-        for direction in directions {
-            var x = placing.coordinate.x
-            var y = placing.coordinate.y
-
-            var diskCoordinatesInLine = [DiskCoordinate]()
-            flipping: while true {
-                x += direction.x
-                y += direction.y
-
-                if let directionDisk = gameState.board.squireAt(DiskCoordinate(x: x, y: y))?.disk {
-                    switch (placing.disk!, directionDisk) { // Uses tuples to make patterns exhaustive
-                    case (.dark, .dark), (.light, .light):
-                        diskCoordinates.append(contentsOf: diskCoordinatesInLine)
-                        break flipping
-                    case (.dark, .light), (.light, .dark):
-                        diskCoordinatesInLine.append(DiskCoordinate(x: x, y: y))
-                    }
-                } else {
-                    break
-                }
-
-            }
+        boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] in
+            guard let self = self else { return }
+            self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
+            self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
+            self.changeTurn()
         }
-
-        return diskCoordinates
-    }
-
-    /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
-    /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
-    private func validMoves(for side: Disk) -> [DiskCoordinate] {
-        var coordinates = [DiskCoordinate]()
-        for line in gameState.board.lines {
-            for squire in line {
-                let placing = SquireState(disk: side, coordinate: squire.coordinate)
-                // ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要がある
-                let canPlaceDisk = !flippedDiskCoordinates(by: placing).isEmpty
-                if canPlaceDisk {
-                    coordinates.append(squire.coordinate)
-                }
-            }
-        }
-        return coordinates
     }
 }
 
 extension ViewController: BoardViewDelegate {
     
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: DiskCoordinate) {
-        if boardView.isAnimating { return }
-
-        if case .computer = gameState.turnPlayer {
-            let placing = SquireState(disk: gameState.turn, coordinate: coordinate)
-            let flippedDiskCoordinates = self.flippedDiskCoordinates(by: placing)
-            guard !flippedDiskCoordinates.isEmpty else {
-                return
-            }
-
-            let coordinates = [placing.coordinate] + flippedDiskCoordinates
-            gameState.board.setDisks(coordinates: coordinates, to: placing.disk!)
-            try? GameStore.saveGame(gameState: self.gameState)
-
-            boardView.animateSettingDisks(at: coordinates, to: placing.disk!) { [weak self] in
-                guard let self = self else { return }
-                self.darkCountLabel.text = "\(self.gameState.board.countDisks(of: .dark))"
-                self.lightCountLabel.text = "\(self.gameState.board.countDisks(of: .light))"
-                self.nextTurn()
-            }
-        }
+        guard !boardView.isAnimating, case .human = gameState.turnPlayer else { return }
+        placeDisk(gameState.turn, coordinate: coordinate)
     }
 }

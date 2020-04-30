@@ -93,4 +93,86 @@ class Board {
         return count
     }
 
+    /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
+    /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
+    func validMoveCoordinates(for side: Disk) -> [DiskCoordinate]? {
+        var coordinates = [DiskCoordinate]()
+        for line in lines {
+            for squire in line {
+                let placing = SquireState(disk: side, coordinate: squire.coordinate)
+                // ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要がある
+                let canPlaceDisk = !flippedDiskCoordinates(by: placing).isEmpty
+                if canPlaceDisk {
+                    coordinates.append(squire.coordinate)
+                }
+            }
+        }
+        return coordinates.isEmpty ? nil : coordinates
+    }
+
+    func flippedDiskCoordinates(by placing: SquireState) -> [DiskCoordinate] {
+
+        let isNotPresent = (squireAt(placing.coordinate)!.disk == nil)
+        guard isNotPresent else {
+            return []
+        }
+
+        var diskCoordinates = [DiskCoordinate]()
+
+        let directions = [
+            (x: -1, y: -1),
+            (x:  0, y: -1),
+            (x:  1, y: -1),
+            (x:  1, y:  0),
+            (x:  1, y:  1),
+            (x:  0, y:  1),
+            (x: -1, y:  0),
+            (x: -1, y:  1),
+        ]
+
+        for direction in directions {
+            var x = placing.coordinate.x
+            var y = placing.coordinate.y
+
+            var diskCoordinatesInLine = [DiskCoordinate]()
+            flipping: while true {
+                x += direction.x
+                y += direction.y
+
+                if let directionDisk = squireAt(DiskCoordinate(x: x, y: y))?.disk {
+                    switch (placing.disk!, directionDisk) { // Uses tuples to make patterns exhaustive
+                    case (.dark, .dark), (.light, .light):
+                        diskCoordinates.append(contentsOf: diskCoordinatesInLine)
+                        break flipping
+                    case (.dark, .light), (.light, .dark):
+                        diskCoordinatesInLine.append(DiskCoordinate(x: x, y: y))
+                    }
+                } else {
+                    break
+                }
+
+            }
+        }
+
+        return diskCoordinates
+    }
+
+    func hasNextTurn(_ turn: Disk) -> NextTurnResult {
+        if let coordinates = validMoveCoordinates(for: turn) {
+            // 今回の打ち手がある
+            return .valid(coordinates)
+        } else if let coordinates = validMoveCoordinates(for: turn.flipped) {
+            // 次回の打ち手はある
+            return .pass(coordinates)
+        } else {
+            // 両者ない
+            return .end
+        }
+    }
+}
+
+enum NextTurnResult {
+    case valid([DiskCoordinate])
+    case pass([DiskCoordinate])
+    case end
 }
