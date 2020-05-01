@@ -173,8 +173,3 @@ private class CellSelectionAction: NSObject {
         boardView.delegate?.boardView(boardView, didSelectCellAt: coordinate)
     }
 }
-
-public struct Coordinate {
-    var x: Int
-    var y: Int
-}
