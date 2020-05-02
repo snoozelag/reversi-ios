@@ -17,6 +17,20 @@ class Board {
 
     /// 盤の高さ（ `8` ）を返します。
     public static let height: Int = 8
+
+    init() {
+        self.lines = {
+            var result = [[Squire]]()
+            for y in (0..<Board.height) {
+                var line = [Squire]()
+                for x in (0..<Board.width) {
+                    line.append(Squire(disk: nil, coordinate: Coordinate(x: x, y: y)))
+                }
+                result.append(line)
+            }
+            return result
+        }()
+    }
     
     /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
     /// - Parameter side: 数えるディスクの色です。
@@ -73,6 +87,9 @@ class Board {
                 x += direction.x
                 y += direction.y
 
+                guard (0..<Board.width) ~= x && (0..<Board.height) ~= y else {
+                    break flipping
+                }
                 switch (disk, lines[y][x].disk) { // Uses tuples to make patterns exhaustive
                 case (.dark, .some(.dark)), (.light, .some(.light)):
                     diskCoordinates.append(contentsOf: diskCoordinatesInLine)
@@ -141,5 +158,49 @@ class Board {
     public func setDisk(_ disk: Disk?, at coordinate: Coordinate) {
         lines[coordinate.y][coordinate.x].disk = disk
     }
+
+    /// `x`, `y` で指定されたセルに `disk` を置きます。
+    /// - Parameter x: セルの列です。
+    /// - Parameter y: セルの行です。
+    /// - Parameter isAnimated: ディスクを置いたりひっくり返したりするアニメーションを表示するかどうかを指定します。
+    /// - Parameter completion: アニメーション完了時に実行されるクロージャです。
+    ///     このクロージャは値を返さず、アニメーションが完了したかを示す真偽値を受け取ります。
+    ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
+    /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
+    func placeDisk(_ disk: Disk, at coordinate: Coordinate) throws -> ([Coordinate], [PlaceType]) {
+        let diskCoordinates = flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+        if diskCoordinates.isEmpty {
+            throw DiskPlacementError(disk: disk, coordinate: coordinate)
+        }
+        let placeTypes = diskCoordinates.map { setDisk(disk, coordinate: $0) }
+        return (diskCoordinates, placeTypes)
+    }
+
+
+    func setDisk(_ disk: Disk?, coordinate: Coordinate) -> PlaceType {
+        var squire = lines[coordinate.x][coordinate.y]
+        let diskBefore: Disk? = squire.disk
+        squire.disk = disk
+        let diskAfter: Disk? = squire.disk
+        lines[coordinate.x][coordinate.y] = squire
+
+        switch (diskBefore, diskAfter) {
+        case (.none, .none):
+            return .none
+        case (.none, .some(let diskAfter)):
+            return .set(diskAfter)
+        case (.some(let diskBefore), .none):
+            return .remove(diskBefore)
+        case (.some(let diskBefore), .some(let diskAfter)):
+            return .flip(diskBefore, diskAfter)
+        }
+    }
     
+}
+
+enum PlaceType {
+    case none
+    case set(_ after: Disk)
+    case remove(_ before: Disk)
+    case flip(_ before: Disk, _ after: Disk)
 }

@@ -5,43 +5,31 @@ private let lineWidth: CGFloat = 2
 public class BoardView: UIView {
     private var cellViews: [CellView] = []
     private var actions: [CellSelectionAction] = []
-    
-    /// 盤の幅（ `8` ）を表します。
-    public let width: Int = 8
-    
-    /// 盤の高さ（ `8` ）を返します。
-    public let height: Int = 8
-    
-    /// 盤のセルの `x` の範囲（ `0 ..< 8` ）を返します。
-    public let xRange: Range<Int>
-    
-    /// 盤のセルの `y` の範囲（ `0 ..< 8` ）を返します。
-    public let yRange: Range<Int>
-    
+
+    var animationCanceller: Canceller?
+    var isAnimating: Bool { animationCanceller != nil }
+    var playerCancellers: [Disk: Canceller] = [:]
+
     /// セルがタップされたときの挙動を移譲するためのオブジェクトです。
     public weak var delegate: BoardViewDelegate?
     
     override public init(frame: CGRect) {
-        xRange = 0 ..< width
-        yRange = 0 ..< height
         super.init(frame: frame)
-        setUp()
     }
     
     required public init?(coder: NSCoder) {
-        xRange = 0 ..< width
-        yRange = 0 ..< height
         super.init(coder: coder)
-        setUp()
     }
     
-    private func setUp() {
+    func configure(board: Board) {
         self.backgroundColor = UIColor(named: "DarkColor")!
         
-        let cellViews: [CellView] = (0 ..< (width * height)).map { _ in
-            let cellView = CellView()
-            cellView.translatesAutoresizingMaskIntoConstraints = false
-            return cellView
+        let cellViews = board.lines.reduce(into: [CellView]()) { result, line in
+            line.forEach { _ in
+                let cellView = CellView()
+                cellView.translatesAutoresizingMaskIntoConstraints = false
+                result.append(cellView)
+            }
         }
         self.cellViews = cellViews
         
@@ -57,8 +45,8 @@ public class BoardView: UIView {
             cellViews[0].widthAnchor.constraint(equalTo: cellViews[0].heightAnchor),
         ])
         
-        for y in yRange {
-            for x in xRange {
+        for y in (0..<Board.height) {
+            for x in (0..<Board.width) {
                 let topNeighborAnchor: NSLayoutYAxisAnchor
                 if let cellView = cellViewAt(Coordinate(x: x, y: y - 1)) {
                     topNeighborAnchor = cellView.bottomAnchor
@@ -79,12 +67,12 @@ public class BoardView: UIView {
                     cellView.leftAnchor.constraint(equalTo: leftNeighborAnchor, constant: lineWidth),
                 ])
                 
-                if y == height - 1 {
+                if y == Board.height - 1 {
                     NSLayoutConstraint.activate([
                         self.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: lineWidth),
                     ])
                 }
-                if x == width - 1 {
+                if x == Board.width - 1 {
                     NSLayoutConstraint.activate([
                         self.rightAnchor.constraint(equalTo: cellView.rightAnchor, constant: lineWidth),
                     ])
@@ -94,8 +82,8 @@ public class BoardView: UIView {
         
         reset()
         
-        for y in yRange {
-            for x in xRange {
+        for y in (0..<Board.height) {
+            for x in (0..<Board.width) {
                 let coordinate = Coordinate(x: x, y: y)
                 let cellView: CellView = cellViewAt(coordinate)!
                 let action = CellSelectionAction(boardView: self, coordinate: coordinate)
@@ -107,21 +95,21 @@ public class BoardView: UIView {
     
     /// 盤をゲーム開始時に状態に戻します。このメソッドはアニメーションを伴いません。
     public func reset() {
-        for y in  yRange {
-            for x in xRange {
+        for y in  (0..<Board.height) {
+            for x in (0..<Board.width) {
                 setDisk(nil, at: Coordinate(x: x, y: y), animated: false)
             }
         }
         
-        setDisk(.light, at: Coordinate(x: width / 2 - 1, y: height / 2 - 1), animated: false)
-        setDisk(.dark, at: Coordinate(x: width / 2, y: height / 2 - 1), animated: false)
-        setDisk(.dark, at: Coordinate(x: width / 2 - 1, y: height / 2), animated: false)
-        setDisk(.light, at: Coordinate(x: width / 2, y: height / 2), animated: false)
+        setDisk(.light, at: Coordinate(x: Board.width / 2 - 1, y: Board.height / 2 - 1), animated: false)
+        setDisk(.dark, at: Coordinate(x: Board.width / 2, y: Board.height / 2 - 1), animated: false)
+        setDisk(.dark, at: Coordinate(x: Board.width / 2 - 1, y: Board.height / 2), animated: false)
+        setDisk(.light, at: Coordinate(x: Board.width / 2, y: Board.height / 2), animated: false)
     }
     
     private func cellViewAt(_ coordinate: Coordinate) -> CellView? {
-        guard xRange.contains(coordinate.x) && yRange.contains(coordinate.y) else { return nil }
-        return cellViews[coordinate.y * width + coordinate.x]
+        guard (0..<Board.width).contains(coordinate.x) && (0..<Board.height).contains(coordinate.y) else { return nil }
+        return cellViews[coordinate.y * Board.width + coordinate.x]
     }
     
     /// `x`, `y` で指定されたセルの状態を返します。
@@ -148,6 +136,92 @@ public class BoardView: UIView {
             preconditionFailure() // FIXME: Add a message.
         }
         cellView.setDisk(disk, animated: animated, completion: completion)
+    }
+
+
+    /// `x`, `y` で指定されたセルに `disk` を置きます。
+    /// - Parameter x: セルの列です。
+    /// - Parameter y: セルの行です。
+    /// - Parameter isAnimated: ディスクを置いたりひっくり返したりするアニメーションを表示するかどうかを指定します。
+    /// - Parameter completion: アニメーション完了時に実行されるクロージャです。
+    ///     このクロージャは値を返さず、アニメーションが完了したかを示す真偽値を受け取ります。
+    ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
+    /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
+    func placeDisk(diskCoordinates: [Coordinate], disk: Disk, at coordinate: Coordinate, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
+
+        if isAnimated {
+            let cleanUp: () -> Void = { [weak self] in
+                self?.animationCanceller = nil
+            }
+            animationCanceller = Canceller(cleanUp)
+            animateSettingDisks(at: [coordinate] + diskCoordinates, to: disk) { [weak self] isFinished in
+                guard let self = self else { return }
+                guard let canceller = self.animationCanceller else { return }
+                if canceller.isCancelled { return }
+                cleanUp()
+
+                completion?(isFinished)
+            }
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.setDisk(disk, at: coordinate, animated: false)
+                for coordinate in diskCoordinates {
+                    self.setDisk(disk, at: coordinate, animated: false)
+                }
+                completion?(true)
+            }
+        }
+    }
+
+    /// `coordinates` で指定されたセルに、アニメーションしながら順番に `disk` を置く。
+    /// `coordinates` から先頭の座標を取得してそのセルに `disk` を置き、
+    /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
+    /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
+    private func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping (Bool) -> Void)
+        where C.Element == Coordinate
+    {
+        guard let coordinate = coordinates.first else {
+            completion(true)
+            return
+        }
+
+        let animationCanceller = self.animationCanceller!
+        setDisk(disk, at: coordinate, animated: true) { [weak self] isFinished in
+            guard let self = self else { return }
+            if animationCanceller.isCancelled { return }
+            if isFinished {
+                self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
+            } else {
+                for coordinate in coordinates {
+                    self.setDisk(disk, at: coordinate, animated: false)
+                }
+                completion(false)
+            }
+        }
+    }
+
+    /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
+    func playTurnOfComputer(turn: Disk, coordinate: Coordinate, diskCoordinates: [Coordinate], placeTypes: [PlaceType], completion: (() -> Void)? = nil) {
+        let cleanUp: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            completion?()
+            self.playerCancellers[turn] = nil
+        }
+        let canceller = Canceller(cleanUp)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self else { return }
+            if canceller.isCancelled { return }
+            cleanUp()
+
+            try! self.placeDisk(diskCoordinates: diskCoordinates, disk: turn, at: coordinate, animated: true) { isFinished in
+                if isFinished {
+                    completion?()
+                }
+            }
+        }
+
+        playerCancellers[turn] = canceller
     }
 }
 
