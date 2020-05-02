@@ -41,35 +41,6 @@ class ViewController: UIViewController {
 // MARK: Reversi logics
 
 extension ViewController {
-    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
-    /// - Parameter side: 数えるディスクの色です。
-    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
-    func countDisks(of side: Disk) -> Int {
-        var count = 0
-        
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                if boardView.diskAt(Coordinate(x: x, y: y)) == side {
-                    count +=  1
-                }
-            }
-        }
-        
-        return count
-    }
-    
-    /// 盤上に置かれたディスクの枚数が多い方の色を返します。
-    /// 引き分けの場合は `nil` が返されます。
-    /// - Returns: 盤上に置かれたディスクの枚数が多い方の色です。引き分けの場合は `nil` を返します。
-    func sideWithMoreDisks() -> Disk? {
-        let darkCount = countDisks(of: .dark)
-        let lightCount = countDisks(of: .light)
-        if darkCount == lightCount {
-            return nil
-        } else {
-            return darkCount > lightCount ? .dark : .light
-        }
-    }
     
     private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate] {
         let directions = [
@@ -120,23 +91,6 @@ extension ViewController {
     /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
     func canPlaceDisk(_ disk: Disk, at coordinate: Coordinate) -> Bool {
         !flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate).isEmpty
-    }
-    
-    /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
-    /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
-    func validMoves(for side: Disk) -> [Coordinate] {
-        var coordinates = [Coordinate]()
-        
-        for y in boardView.yRange {
-            for x in boardView.xRange {
-                let coordinate = Coordinate(x: x, y: y)
-                if canPlaceDisk(side, at: coordinate) {
-                    coordinates.append(coordinate)
-                }
-            }
-        }
-        
-        return coordinates
     }
 
     /// `x`, `y` で指定されたセルに `disk` を置きます。
@@ -246,8 +200,8 @@ extension ViewController {
 
         let flippedTurn = game.turn.flipped
         
-        if validMoves(for: flippedTurn).isEmpty {
-            if validMoves(for: flippedTurn.flipped).isEmpty {
+        if game.board.validMoves(for: flippedTurn).isEmpty {
+            if game.board.validMoves(for: flippedTurn.flipped).isEmpty {
                 isGameOver = true
                 updateMessageViewsGameOver()
             } else {
@@ -274,7 +228,7 @@ extension ViewController {
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playTurnOfComputer() {
         let turn = game.turn
-        let coordinate = validMoves(for: turn).randomElement()!
+        let coordinate = game.board.validMoves(for: turn).randomElement()!
 
         playerActivityIndicators[turn.index].startAnimating()
         
@@ -304,7 +258,7 @@ extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     func updateCountLabels() {
         for side in Disk.sides {
-            countLabels[side.index].text = "\(countDisks(of: side))"
+            countLabels[side.index].text = "\(game.board.countDisks(of: side))"
         }
     }
 
@@ -315,7 +269,7 @@ extension ViewController {
     }
 
     func updateMessageViewsGameOver() {
-        if let winner = self.sideWithMoreDisks() {
+        if let winner = game.board.sideWithMoreDisks() {
             messageDiskView.isHidden = false
             messageDiskView.disk = winner
             messageLabel.text = " won"
