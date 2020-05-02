@@ -137,3 +137,66 @@ public class CellView: UIView {
         button.allControlEvents
     }
 }
+
+extension CellView {
+
+    func setDisk(placeType: PlaceType, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+        if animated {
+            switch placeType {
+              case .none:
+                  completion?(true)
+              case .set(let after):
+                  UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
+                        self?.layoutDiskView(disk: after)
+                    }, completion: { finished in
+                        completion?(finished)
+                    })
+              case .remove:
+                  UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
+                        self?.layoutDiskView(disk: nil)
+                    }, completion: { finished in
+                        completion?(finished)
+                    })
+              case .flip(_, let after):
+                  UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
+                      self?.layoutDiskView(disk: after)
+                  }, completion: { [weak self] finished in
+                      guard let self = self else { return }
+                      if self.diskView.disk == after {
+                          completion?(finished)
+                      }
+                      self.diskView.disk = after
+                      UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
+                          self?.layoutDiskView(disk: after)
+                      }, completion: { finished in
+                          completion?(finished)
+                      })
+                  })
+              }
+        } else {
+            if case .set(let after) = placeType {
+                diskView.disk = after
+            } else if case .flip(_, let after) = placeType {
+                diskView.disk = after
+            }
+            completion?(true)
+            setNeedsLayout()
+        }
+    }
+
+    private func layoutDiskView(disk: Disk?) {
+        let cellSize = bounds.size
+        let diskDiameter = min(cellSize.width, cellSize.height) * 0.8
+        let diskSize: CGSize
+        if disk == nil {
+            diskSize = CGSize(width: diskDiameter, height: diskDiameter)
+        } else {
+            diskSize = CGSize(width: 0, height: diskDiameter)
+        }
+        diskView.frame = CGRect(
+            origin: CGPoint(x: (cellSize.width - diskSize.width) / 2, y: (cellSize.height - diskSize.height) / 2),
+            size: diskSize
+        )
+        diskView.alpha = disk == nil ? 0.0 : 1.0
+    }
+}

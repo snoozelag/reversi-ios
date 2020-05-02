@@ -196,7 +196,7 @@ extension ViewController: BoardViewDelegate {
         guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
 
         guard let (diskCoordinates, placeTypes) = try? game.board.placeDisk(turn, at: coordinate) else { return }
-        try? boardView.placeDisk(diskCoordinates: diskCoordinates, disk: turn, at: coordinate, animated: true) { [weak self] _ in
+        try? boardView.placeDisk(diskCoordinates: diskCoordinates, placeTypes: placeTypes, disk: turn, at: coordinate, animated: true) { [weak self] _ in
             guard let self = self else { return }
             self.nextTurn()
             try? self.saveGame()

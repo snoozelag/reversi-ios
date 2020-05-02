@@ -138,6 +138,12 @@ public class BoardView: UIView {
         cellView.setDisk(disk, animated: animated, completion: completion)
     }
 
+    func setDisk(placeType: PlaceType, at coordinate: Coordinate, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+        guard let cellView = cellViewAt(coordinate) else {
+            preconditionFailure() // FIXME: Add a message.
+        }
+        cellView.setDisk(placeType: placeType, animated: true, completion: completion)
+    }
 
     /// `x`, `y` で指定されたセルに `disk` を置きます。
     /// - Parameter x: セルの列です。
@@ -147,7 +153,7 @@ public class BoardView: UIView {
     ///     このクロージャは値を返さず、アニメーションが完了したかを示す真偽値を受け取ります。
     ///     もし `animated` が `false` の場合、このクロージャは次の run loop サイクルの初めに実行されます。
     /// - Throws: もし `disk` を `x`, `y` で指定されるセルに置けない場合、 `DiskPlacementError` を `throw` します。
-    func placeDisk(diskCoordinates: [Coordinate], disk: Disk, at coordinate: Coordinate, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
+    func placeDisk(diskCoordinates: [Coordinate], placeTypes: [PlaceType], disk: Disk, at coordinate: Coordinate, animated isAnimated: Bool, completion: ((Bool) -> Void)? = nil) throws {
 
         if isAnimated {
             let cleanUp: () -> Void = { [weak self] in
@@ -214,7 +220,7 @@ public class BoardView: UIView {
             if canceller.isCancelled { return }
             cleanUp()
 
-            try! self.placeDisk(diskCoordinates: diskCoordinates, disk: turn, at: coordinate, animated: true) { isFinished in
+            try! self.placeDisk(diskCoordinates: diskCoordinates, placeTypes: placeTypes, disk: turn, at: coordinate, animated: true) { isFinished in
                 if isFinished {
                     completion?()
                 }
