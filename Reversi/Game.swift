@@ -11,9 +11,18 @@ import Foundation
 class Game {
     var isOver = false
     var turn: Disk = .dark
-    var darkPlayer: Player = .manual
-    var lightPlayer: Player = .manual
+    var darkPlayer: PlayerType = .manual
+    var lightPlayer: PlayerType = .manual
     var board = Board()
+
+    var turnPlayerType: PlayerType {
+        switch turn {
+        case .dark:
+            return darkPlayer
+        case .light:
+            return lightPlayer
+        }
+    }
 }
 
 extension Game {
@@ -76,16 +85,27 @@ extension Game {
         }
 
         // players
-        for (var player) in [darkPlayer, lightPlayer] {
+        darkPlayer = try {
             guard
                 let playerSymbol = line.popFirst(),
                 let playerNumber = Int(playerSymbol.description),
-                let loadedPlayer = Player(rawValue: playerNumber)
+                let loadedPlayer = PlayerType(rawValue: playerNumber)
             else {
                 throw FileIOError.read(path: path, cause: nil)
             }
-            player = loadedPlayer
-        }
+            return loadedPlayer
+        }()
+
+        lightPlayer = try {
+            guard
+                let playerSymbol = line.popFirst(),
+                let playerNumber = Int(playerSymbol.description),
+                let loadedPlayer = PlayerType(rawValue: playerNumber)
+            else {
+                throw FileIOError.read(path: path, cause: nil)
+            }
+            return loadedPlayer
+        }()
 
         do { // board
             guard lines.count == Board.height else {
@@ -116,5 +136,38 @@ extension Game {
     enum FileIOError: Error {
         case write(path: String, cause: Error?)
         case read(path: String, cause: Error?)
+    }
+}
+
+enum PlayerType: Int, CaseIterable {
+    case manual = 0
+    case computer = 1
+}
+
+private enum Symbol: String {
+    case dark = "x"
+    case light = "o"
+    case none = "-"
+
+    init(disk: Disk?) {
+        switch disk {
+        case .dark:
+            self = .dark
+        case .light:
+            self = .light
+        case nil:
+            self = .none
+        }
+    }
+
+    var disk: Disk? {
+        switch self {
+        case .dark:
+            return .dark
+        case .light:
+            return .light
+        case .none:
+            return nil
+        }
     }
 }

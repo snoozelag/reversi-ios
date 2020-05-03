@@ -1,5 +1,20 @@
 import UIKit
 
+final class Canceller {
+    private(set) var isCancelled: Bool = false
+    private let body: (() -> Void)?
+
+    init(_ body: (() -> Void)?) {
+        self.body = body
+    }
+
+    func cancel() {
+        if isCancelled { return }
+        isCancelled = true
+        body?()
+    }
+}
+
 private let lineWidth: CGFloat = 2
 
 public class BoardView: UIView {
@@ -45,34 +60,39 @@ public class BoardView: UIView {
             cellViews[0].widthAnchor.constraint(equalTo: cellViews[0].heightAnchor),
         ])
         
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let topNeighborAnchor: NSLayoutYAxisAnchor
-                if let cellView = cellViewAt(Coordinate(x: x, y: y - 1)) {
-                    topNeighborAnchor = cellView.bottomAnchor
-                } else {
-                    topNeighborAnchor = self.topAnchor
-                }
+        for line in board.lines {
+            for squire in line {
+
+                let topNeighborAnchor: NSLayoutYAxisAnchor = {
+                    let coordinate = Coordinate(x: squire.coordinate.x, y: squire.coordinate.y - 1)
+                    if let cellView = cellViewAt(coordinate) {
+                        return cellView.bottomAnchor
+                    } else {
+                        return self.topAnchor
+                    }
+                }()
+
+                let leftNeighborAnchor: NSLayoutXAxisAnchor = {
+                    let coordinate = Coordinate(x: squire.coordinate.x - 1, y: squire.coordinate.y)
+                    if let cellView = cellViewAt(coordinate) {
+                        return cellView.rightAnchor
+                    } else {
+                        return self.leftAnchor
+                    }
+                }()
                 
-                let leftNeighborAnchor: NSLayoutXAxisAnchor
-                if let cellView = cellViewAt(Coordinate(x: x - 1, y: y)) {
-                    leftNeighborAnchor = cellView.rightAnchor
-                } else {
-                    leftNeighborAnchor = self.leftAnchor
-                }
-                
-                let cellView = cellViewAt(Coordinate(x: x, y: y))!
+                let cellView = cellViewAt(Coordinate(x: squire.coordinate.x, y: squire.coordinate.y))!
                 NSLayoutConstraint.activate([
                     cellView.topAnchor.constraint(equalTo: topNeighborAnchor, constant: lineWidth),
                     cellView.leftAnchor.constraint(equalTo: leftNeighborAnchor, constant: lineWidth),
                 ])
                 
-                if y == Board.height - 1 {
+                if squire.coordinate.y == Board.height - 1 {
                     NSLayoutConstraint.activate([
                         self.bottomAnchor.constraint(equalTo: cellView.bottomAnchor, constant: lineWidth),
                     ])
                 }
-                if x == Board.width - 1 {
+                if squire.coordinate.x == Board.width - 1 {
                     NSLayoutConstraint.activate([
                         self.rightAnchor.constraint(equalTo: cellView.rightAnchor, constant: lineWidth),
                     ])
@@ -80,13 +100,12 @@ public class BoardView: UIView {
             }
         }
         
-        reset()
+        setDisks(board: board)
         
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let coordinate = Coordinate(x: x, y: y)
-                let cellView: CellView = cellViewAt(coordinate)!
-                let action = CellSelectionAction(boardView: self, coordinate: coordinate)
+        for line in board.lines {
+            for squire in line {
+                let cellView: CellView = cellViewAt(squire.coordinate)!
+                let action = CellSelectionAction(boardView: self, coordinate: squire.coordinate)
                 actions.append(action) // To retain the `action`
                 cellView.addTarget(action, action: #selector(action.selectCell), for: .touchUpInside)
             }
@@ -94,17 +113,12 @@ public class BoardView: UIView {
     }
     
     /// 盤をゲーム開始時に状態に戻します。このメソッドはアニメーションを伴いません。
-    public func reset() {
-        for y in  (0..<Board.height) {
-            for x in (0..<Board.width) {
-                setDisk(nil, at: Coordinate(x: x, y: y), animated: false)
+    func setDisks(board: Board) {
+        for line in board.lines {
+            for squire in line {
+                setDisk(squire.disk, at: squire.coordinate, animated: false)
             }
         }
-        
-        setDisk(.light, at: Coordinate(x: Board.width / 2 - 1, y: Board.height / 2 - 1), animated: false)
-        setDisk(.dark, at: Coordinate(x: Board.width / 2, y: Board.height / 2 - 1), animated: false)
-        setDisk(.dark, at: Coordinate(x: Board.width / 2 - 1, y: Board.height / 2), animated: false)
-        setDisk(.light, at: Coordinate(x: Board.width / 2, y: Board.height / 2), animated: false)
     }
     
     private func cellViewAt(_ coordinate: Coordinate) -> CellView? {

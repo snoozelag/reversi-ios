@@ -15,13 +15,14 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         
         boardView.delegate = self
-        boardView.configure(board: game.board)
         
         do {
             try game.load()
         } catch _ {
             game.new()
         }
+
+        boardView.configure(board: game.board)
         updateMessageViews(side: game.turn)
         updateCountLabels()
     }
@@ -42,8 +43,7 @@ extension ViewController {
     
     /// プレイヤーの行動を待ちます。
     func waitForPlayer() {
-        let turn = game.turn
-        switch Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! {
+        switch game.turnPlayerType {
         case .manual:
             break
         case .computer:
@@ -90,7 +90,7 @@ extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     func updateCountLabels() {
         for side in Disk.allCases {
-            countLabels[side.index].text = "\(game.board.countDisks(of: side))"
+            countLabels[side.viewIndex].text = "\(game.board.countDisks(of: side))"
         }
     }
 
@@ -141,18 +141,21 @@ extension ViewController {
         })
         present(alertController, animated: true)
     }
-    
-    /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
-    @IBAction func changePlayerControlSegment(_ sender: UISegmentedControl) {
-        let side = Disk(index: playerControls.firstIndex(of: sender)!)
-        
+
+    @IBAction private func darkPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
+        segmentedControlValueChangedAction(side: .dark, playerType: PlayerType(rawValue: sender.selectedSegmentIndex)!)
+    }
+
+    @IBAction private func lightPlayerSegmentedControlValueChanged(_ sender: UISegmentedControl) {
+        segmentedControlValueChangedAction(side: .light, playerType: PlayerType(rawValue: sender.selectedSegmentIndex)!)
+    }
+
+    private func segmentedControlValueChangedAction(side: Disk, playerType: PlayerType) {
         try? game.save()
-        
         if let canceller = boardView.playerCancellers[side] {
             canceller.cancel()
         }
-        
-        if !boardView.isAnimating, !game.isOver, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
+        if !boardView.isAnimating, !game.isOver, case .computer = playerType {
             playTurnOfComputer()
         }
     }
@@ -160,11 +163,11 @@ extension ViewController {
     private func playTurnOfComputer() {
         let turn = game.turn
         let coordinate = game.board.validMoves(for: turn).randomElement()!
-        playerActivityIndicators[turn.index].startAnimating()
+        playerActivityIndicators[turn.viewIndex].startAnimating()
         let (diskCoordinates, placeTypes) = try! game.board.placeDisk(turn, at: coordinate)
         boardView.playTurnOfComputer(turn: turn, coordinate: coordinate, diskCoordinates: diskCoordinates, placeTypes: placeTypes) { [weak self] in
             guard let self = self else { return }
-            self.playerActivityIndicators[turn.index].stopAnimating()
+            self.playerActivityIndicators[turn.viewIndex].stopAnimating()
             self.nextTurn()
             try? self.game.save()
             self.updateCountLabels()
@@ -180,7 +183,7 @@ extension ViewController: BoardViewDelegate {
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
         let turn = game.turn
         if boardView.isAnimating { return }
-        guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
+        guard case .manual = PlayerType(rawValue: playerControls[turn.viewIndex].selectedSegmentIndex)! else { return }
 
         guard let (diskCoordinates, placeTypes) = try? game.board.placeDisk(turn, at: coordinate) else { return }
         try? boardView.placeDisk(diskCoordinates: diskCoordinates, placeTypes: placeTypes, disk: turn, at: coordinate, animated: true) { [weak self] _ in
@@ -190,80 +193,4 @@ extension ViewController: BoardViewDelegate {
             self.updateCountLabels()
         }
     }
-}
-
-// MARK: Additional types
-
-final class Canceller {
-    private(set) var isCancelled: Bool = false
-    private let body: (() -> Void)?
-    
-    init(_ body: (() -> Void)?) {
-        self.body = body
-    }
-    
-    func cancel() {
-        if isCancelled { return }
-        isCancelled = true
-        body?()
-    }
-}
-
-struct DiskPlacementError: Error {
-    let disk: Disk
-    let coordinate: Coordinate
-}
-
-// MARK: File-private extensions
-
-extension Disk {
-    init(index: Int) {
-        for side in Disk.allCases {
-            if index == side.index {
-                self = side
-                return
-            }
-        }
-        preconditionFailure("Illegal index: \(index)")
-    }
-    
-    var index: Int {
-        switch self {
-        case .dark: return 0
-        case .light: return 1
-        }
-    }
-}
-
-enum Symbol: String {
-    case dark = "x"
-    case light = "o"
-    case none = "-"
-
-    init(disk: Disk?) {
-        switch disk {
-        case .dark:
-            self = .dark
-        case .light:
-            self = .light
-        case nil:
-            self = .none
-        }
-    }
-
-    var disk: Disk? {
-        switch self {
-        case .dark:
-            return .dark
-        case .light:
-            return .light
-        case .none:
-            return nil
-        }
-    }
-}
-
-enum Player: Int {
-    case manual = 0
-    case computer = 1
 }

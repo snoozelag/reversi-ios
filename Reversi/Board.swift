@@ -8,6 +8,11 @@
 
 import Foundation
 
+struct DiskPlacementError: Error {
+    let disk: Disk
+    let coordinate: Coordinate
+}
+
 class Board {
 
     var lines = [[Squire]]()

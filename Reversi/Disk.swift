@@ -1,6 +1,13 @@
 public enum Disk: CaseIterable {
     case dark
     case light
+
+    var viewIndex: Int {
+        switch self {
+        case .dark: return 0
+        case .light: return 1
+        }
+    }
 }
 
 extension Disk: Hashable {}
