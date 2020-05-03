@@ -10,7 +10,6 @@ class ViewController: UIViewController {
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
 
     private var game = Game()
-    private var isGameOver = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,10 +18,12 @@ class ViewController: UIViewController {
         boardView.configure(board: game.board)
         
         do {
-            try loadGame()
+            try game.load()
         } catch _ {
-            newGame()
+            game.new()
         }
+        updateMessageViews(side: game.turn)
+        updateCountLabels()
     }
     
     private var viewHasAppeared: Bool = false
@@ -38,20 +39,6 @@ class ViewController: UIViewController {
 // MARK: Game management
 
 extension ViewController {
-    /// ゲームの状態を初期化し、新しいゲームを開始します。
-    func newGame() {
-        boardView.reset()
-        game.turn = .dark
-        
-        for playerControl in playerControls {
-            playerControl.selectedSegmentIndex = Player.manual.rawValue
-        }
-
-        updateMessageViews(side: .dark)
-        updateCountLabels()
-        
-        try? saveGame()
-    }
     
     /// プレイヤーの行動を待ちます。
     func waitForPlayer() {
@@ -73,7 +60,7 @@ extension ViewController {
         
         if game.board.validMoves(for: flippedTurn).isEmpty {
             if game.board.validMoves(for: flippedTurn.flipped).isEmpty {
-                isGameOver = true
+                game.isOver = true
                 updateMessageViewsGameOver()
             } else {
                 game.turn = flippedTurn
@@ -149,7 +136,7 @@ extension ViewController {
                 self.boardView.playerCancellers.removeValue(forKey: side)
             }
             
-            self.newGame()
+            self.game.new()
             self.waitForPlayer()
         })
         present(alertController, animated: true)
@@ -159,13 +146,13 @@ extension ViewController {
     @IBAction func changePlayerControlSegment(_ sender: UISegmentedControl) {
         let side = Disk(index: playerControls.firstIndex(of: sender)!)
         
-        try? saveGame()
+        try? game.save()
         
         if let canceller = boardView.playerCancellers[side] {
             canceller.cancel()
         }
         
-        if !boardView.isAnimating, !isGameOver, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
+        if !boardView.isAnimating, !game.isOver, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
             playTurnOfComputer()
         }
     }
@@ -179,7 +166,7 @@ extension ViewController {
             guard let self = self else { return }
             self.playerActivityIndicators[turn.index].stopAnimating()
             self.nextTurn()
-            try? self.saveGame()
+            try? self.game.save()
             self.updateCountLabels()
         }
     }
@@ -199,107 +186,9 @@ extension ViewController: BoardViewDelegate {
         try? boardView.placeDisk(diskCoordinates: diskCoordinates, placeTypes: placeTypes, disk: turn, at: coordinate, animated: true) { [weak self] _ in
             guard let self = self else { return }
             self.nextTurn()
-            try? self.saveGame()
+            try? self.game.save()
             self.updateCountLabels()
         }
-    }
-}
-
-// MARK: Save and Load
-
-extension ViewController {
-    private var path: String {
-        (NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first! as NSString).appendingPathComponent("Game")
-    }
-    
-    /// ゲームの状態をファイルに書き出し、保存します。
-    func saveGame() throws {
-        var output: String = ""
-        let diskForSymbol = isGameOver ? nil : game.turn
-        output += Symbol(disk: diskForSymbol).rawValue
-        for side in Disk.allCases {
-            output += playerControls[side.index].selectedSegmentIndex.description
-        }
-        output += "\n"
-        
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let diskOnCell = boardView.diskAt(Coordinate(x: x, y: y))
-                output += Symbol(disk: diskOnCell).rawValue
-            }
-            output += "\n"
-        }
-        
-        do {
-            try output.write(toFile: path, atomically: true, encoding: .utf8)
-        } catch let error {
-            throw FileIOError.read(path: path, cause: error)
-        }
-    }
-    
-    /// ゲームの状態をファイルから読み込み、復元します。
-    func loadGame() throws {
-        let input = try String(contentsOfFile: path, encoding: .utf8)
-        var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
-        
-        guard var line = lines.popFirst() else {
-            throw FileIOError.read(path: path, cause: nil)
-        }
-        
-        do { // turn
-            guard
-                let diskSymbolString = line.popFirst()?.description,
-                let disk = Symbol(rawValue: diskSymbolString)?.disk
-            else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            game.turn = disk
-        }
-
-        // players
-        for side in Disk.allCases {
-            guard
-                let playerSymbol = line.popFirst(),
-                let playerNumber = Int(playerSymbol.description),
-                let player = Player(rawValue: playerNumber)
-            else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            playerControls[side.index].selectedSegmentIndex = player.rawValue
-        }
-
-        do { // board
-            guard lines.count == Board.height else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            
-            var y = 0
-            while let line = lines.popFirst() {
-                var x = 0
-                for character in line {
-                    let disk = Symbol(rawValue: character.description)?.disk
-                    let coordinate = Coordinate(x: x, y: y)
-                    boardView.setDisk(disk, at: coordinate, animated: false)
-                    game.board.lines[y][x] = Squire(disk: disk, coordinate: coordinate)
-                    x += 1
-                }
-                guard x == Board.width else {
-                    throw FileIOError.read(path: path, cause: nil)
-                }
-                y += 1
-            }
-            guard y == Board.height else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-        }
-
-        updateMessageViews(side: game.turn)
-        updateCountLabels()
-    }
-    
-    enum FileIOError: Error {
-        case write(path: String, cause: Error?)
-        case read(path: String, cause: Error?)
     }
 }
 
