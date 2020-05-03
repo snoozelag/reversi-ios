@@ -102,7 +102,7 @@ extension ViewController {
 extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     func updateCountLabels() {
-        for side in Disk.sides {
+        for side in Disk.allCases {
             countLabels[side.index].text = "\(game.board.countDisks(of: side))"
         }
     }
@@ -144,7 +144,7 @@ extension ViewController {
             self.boardView.animationCanceller?.cancel()
             self.boardView.animationCanceller = nil
             
-            for side in Disk.sides {
+            for side in Disk.allCases {
                 self.boardView.playerCancellers[side]?.cancel()
                 self.boardView.playerCancellers.removeValue(forKey: side)
             }
@@ -217,7 +217,7 @@ extension ViewController {
         var output: String = ""
         let diskForSymbol = isGameOver ? nil : game.turn
         output += Symbol(disk: diskForSymbol).rawValue
-        for side in Disk.sides {
+        for side in Disk.allCases {
             output += playerControls[side.index].selectedSegmentIndex.description
         }
         output += "\n"
@@ -257,7 +257,7 @@ extension ViewController {
         }
 
         // players
-        for side in Disk.sides {
+        for side in Disk.allCases {
             guard
                 let playerSymbol = line.popFirst(),
                 let playerNumber = Int(playerSymbol.description),
@@ -305,13 +305,6 @@ extension ViewController {
 
 // MARK: Additional types
 
-extension ViewController {
-    enum Player: Int {
-        case manual = 0
-        case computer = 1
-    }
-}
-
 final class Canceller {
     private(set) var isCancelled: Bool = false
     private let body: (() -> Void)?
@@ -336,7 +329,7 @@ struct DiskPlacementError: Error {
 
 extension Disk {
     init(index: Int) {
-        for side in Disk.sides {
+        for side in Disk.allCases {
             if index == side.index {
                 self = side
                 return
@@ -379,4 +372,9 @@ enum Symbol: String {
             return nil
         }
     }
+}
+
+enum Player: Int {
+    case manual = 0
+    case computer = 1
 }
