@@ -60,7 +60,8 @@ extension ViewController {
         
         for y in boardView.yRange {
             for x in boardView.xRange {
-                if boardView.diskAt(x: x, y: y) == side {
+                let coordinate = Coordinate(x: x, y: y)
+                if boardView.diskAt(coordinate) == side {
                     count +=  1
                 }
             }
@@ -82,7 +83,7 @@ extension ViewController {
         }
     }
     
-    private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, atX x: Int, y: Int) -> [(Int, Int)] {
+    private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate] {
         let directions = [
             (x: -1, y: -1),
             (x:  0, y: -1),
@@ -94,27 +95,27 @@ extension ViewController {
             (x: -1, y:  1),
         ]
         
-        guard boardView.diskAt(x: x, y: y) == nil else {
+        guard boardView.diskAt(coordinate) == nil else {
             return []
         }
         
-        var diskCoordinates: [(Int, Int)] = []
+        var diskCoordinates: [Coordinate] = []
         
         for direction in directions {
-            var x = x
-            var y = y
+            var x = coordinate.x
+            var y = coordinate.y
             
-            var diskCoordinatesInLine: [(Int, Int)] = []
+            var diskCoordinatesInLine: [Coordinate] = []
             flipping: while true {
                 x += direction.x
                 y += direction.y
                 
-                switch (disk, boardView.diskAt(x: x, y: y)) { // Uses tuples to make patterns exhaustive
+                switch (disk, boardView.diskAt(Coordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
                 case (.dark, .some(.dark)), (.light, .some(.light)):
                     diskCoordinates.append(contentsOf: diskCoordinatesInLine)
                     break flipping
                 case (.dark, .some(.light)), (.light, .some(.dark)):
-                    diskCoordinatesInLine.append((x, y))
+                    diskCoordinatesInLine.append(Coordinate(x: x, y: y))
                 case (_, .none):
                     break flipping
                 }
@@ -129,19 +130,20 @@ extension ViewController {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
-    func canPlaceDisk(_ disk: Disk, atX x: Int, y: Int) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y).isEmpty
+    func canPlaceDisk(_ disk: Disk, at coordinate: Coordinate) -> Bool {
+        !flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate).isEmpty
     }
     
     /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
     /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
-    func validMoves(for side: Disk) -> [(x: Int, y: Int)] {
-        var coordinates: [(Int, Int)] = []
+    func validMoves(for side: Disk) -> [Coordinate] {
+        var coordinates: [Coordinate] = []
         
         for y in boardView.yRange {
             for x in boardView.xRange {
-                if canPlaceDisk(side, atX: x, y: y) {
-                    coordinates.append((x, y))
+                let coordinate = Coordinate(x: x, y: y)
+                if canPlaceDisk(side, at: coordinate) {
+                    coordinates.append(coordinate)
                 }
             }
         }
@@ -166,22 +168,22 @@ extension ViewController {
     /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
     /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
     private func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping (Bool) -> Void)
-        where C.Element == (Int, Int)
+        where C.Element == Coordinate
     {
-        guard let (x, y) = coordinates.first else {
+        guard let coordinate = coordinates.first else {
             completion(true)
             return
         }
         
         let animationCanceller = self.animationCanceller!
-        boardView.setDisk(disk, atX: x, y: y, animated: true) { [weak self] isFinished in
+        boardView.setDisk(disk, at: coordinate, animated: true) { [weak self] isFinished in
             guard let self = self else { return }
             if animationCanceller.isCancelled { return }
             if isFinished {
                 self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
             } else {
-                for (x, y) in coordinates {
-                    self.boardView.setDisk(disk, atX: x, y: y, animated: false)
+                for coordinate in coordinates {
+                    self.boardView.setDisk(disk, at: coordinate, animated: false)
                 }
                 completion(false)
             }
@@ -254,7 +256,7 @@ extension ViewController {
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playTurnOfComputer() {
         guard let turn = self.turn else { preconditionFailure() }
-        let (x, y) = validMoves(for: turn).randomElement()!
+        let coordinate = validMoves(for: turn).randomElement()!
 
         playerActivityIndicators[turn.index].startAnimating()
         
@@ -274,7 +276,7 @@ extension ViewController {
                 self?.nextTurn()
             }
 
-            let diskCoordinates = self.flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y)
+            let diskCoordinates = self.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
             guard !diskCoordinates.isEmpty else {
 //                throw DiskPlacementError(disk: disk, x: x, y: y)
                 return
@@ -284,7 +286,7 @@ extension ViewController {
                 self?.animationCanceller = nil
             }
             self.animationCanceller = Canceller(cleanUp)
-            self.animateSettingDisks(at: [(x, y)] + diskCoordinates, to: disk) { [weak self] isFinished in
+            self.animateSettingDisks(at: [coordinate] + diskCoordinates, to: disk) { [weak self] isFinished in
                 guard let self = self else { return }
                 guard let canceller = self.animationCanceller else { return }
                 if canceller.isCancelled { return }
@@ -381,7 +383,7 @@ extension ViewController: BoardViewDelegate {
     /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
-    func boardView(_ boardView: BoardView, didSelectCellAtX x: Int, y: Int) {
+    func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
         guard let turn = turn else { return }
         if isAnimating { return }
         guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
@@ -391,7 +393,7 @@ extension ViewController: BoardViewDelegate {
             self?.nextTurn()
         }
 
-        let diskCoordinates = self.flippedDiskCoordinatesByPlacingDisk(disk, atX: x, y: y)
+        let diskCoordinates = self.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
         guard !diskCoordinates.isEmpty else {
             //                throw DiskPlacementError(disk: disk, x: x, y: y)
             return
@@ -401,7 +403,7 @@ extension ViewController: BoardViewDelegate {
             self?.animationCanceller = nil
         }
         self.animationCanceller = Canceller(cleanUp)
-        self.animateSettingDisks(at: [(x, y)] + diskCoordinates, to: disk) { [weak self] isFinished in
+        self.animateSettingDisks(at: [coordinate] + diskCoordinates, to: disk) { [weak self] isFinished in
             guard let self = self else { return }
             guard let canceller = self.animationCanceller else { return }
             if canceller.isCancelled { return }
@@ -432,7 +434,8 @@ extension ViewController {
         
         for y in boardView.yRange {
             for x in boardView.xRange {
-                output += boardView.diskAt(x: x, y: y).symbol
+                let coordinate = Coordinate(x: x, y: y)
+                output += boardView.diskAt(coordinate).symbol
             }
             output += "\n"
         }
@@ -485,7 +488,8 @@ extension ViewController {
                 var x = 0
                 for character in line {
                     let disk = Disk?(symbol: "\(character)").flatMap { $0 }
-                    boardView.setDisk(disk, atX: x, y: y, animated: false)
+                    let coordinate = Coordinate(x: x, y: y)
+                    boardView.setDisk(disk, at: coordinate, animated: false)
                     x += 1
                 }
                 guard x == boardView.width else {
@@ -583,4 +587,9 @@ extension Optional where Wrapped == Disk {
             return "-"
         }
     }
+}
+
+public struct Coordinate {
+    var x: Int
+    var y: Int
 }
