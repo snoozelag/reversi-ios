@@ -8,9 +8,8 @@ class ViewController: UIViewController {
     @IBOutlet private var playerControls: [UISegmentedControl]!
     @IBOutlet private var countLabels: [UILabel]!
     @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
-    
-    /// どちらの色のプレイヤーのターンかを表します。ゲーム終了時は `nil` です。
-    private var turn: Disk? = .dark
+
+    private var game = Game()
     
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
@@ -77,7 +76,7 @@ extension ViewController {
     /// ゲームの状態を初期化し、新しいゲームを開始します。
     func newGame() {
         boardView.reset()
-        turn = .dark
+        game.turn = .dark
         
         for playerControl in playerControls {
             playerControl.selectedSegmentIndex = Player.manual.rawValue
@@ -91,8 +90,8 @@ extension ViewController {
     
     /// プレイヤーの行動を待ちます。
     func waitForPlayer() {
-        guard let turn = self.turn else { return }
-        switch Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! {
+        guard !game.isOver else { return }
+        switch Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! {
         case .manual:
             break
         case .computer:
@@ -104,16 +103,15 @@ extension ViewController {
     /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
     /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     func nextTurn() {
-        guard var turn = self.turn else { return }
+        guard !game.isOver else { return }
 
-        turn.flip()
+        game.turn.flip()
         
-        if boardView.board.validMoves(for: turn).isEmpty {
-            if boardView.board.validMoves(for: turn.flipped).isEmpty {
-                self.turn = nil
+        if boardView.board.validMoves(for: game.turn).isEmpty {
+            if boardView.board.validMoves(for: game.turn.flipped).isEmpty {
+                game.isOver = true
                 updateMessageViews()
             } else {
-                self.turn = turn
                 updateMessageViews()
                 
                 let alertController = UIAlertController(
@@ -127,7 +125,6 @@ extension ViewController {
                 present(alertController, animated: true)
             }
         } else {
-            self.turn = turn
             updateMessageViews()
             waitForPlayer()
         }
@@ -135,10 +132,11 @@ extension ViewController {
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playTurnOfComputer() {
-        guard let turn = self.turn else { preconditionFailure() }
-        let coordinate = boardView.board.validMoves(for: turn).randomElement()!
+        let turn = game.turn
+        guard !game.isOver else { preconditionFailure() }
+        let coordinate = boardView.board.validMoves(for: game.turn).randomElement()!
 
-        playerActivityIndicators[turn.index].startAnimating()
+        playerActivityIndicators[game.turn.index].startAnimating()
         
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
@@ -178,7 +176,7 @@ extension ViewController {
             }
         }
         
-        playerCancellers[turn] = canceller
+        playerCancellers[game.turn] = canceller
     }
 }
 
@@ -194,12 +192,7 @@ extension ViewController {
     
     /// 現在の状況に応じてメッセージを表示します。
     func updateMessageViews() {
-        switch turn {
-        case .some(let side):
-            messageDiskView.isHidden = false
-            messageDiskView.configure(disk: side)
-            messageLabel.text = "'s turn"
-        case .none:
+        if game.isOver {
             if let winner = boardView.board.sideWithMoreDisks() {
                 messageDiskView.isHidden = false
                 messageDiskView.configure(disk: winner)
@@ -208,6 +201,10 @@ extension ViewController {
                 messageDiskView.isHidden = true
                 messageLabel.text = "Tied"
             }
+        } else {
+            messageDiskView.isHidden = false
+            messageDiskView.configure(disk: game.turn)
+            messageLabel.text = "'s turn"
         }
     }
 }
@@ -252,7 +249,7 @@ extension ViewController {
             canceller.cancel()
         }
         
-        if !isAnimating, side == turn, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
+        if !isAnimating, !game.isOver, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
             playTurnOfComputer()
         }
     }
@@ -264,11 +261,11 @@ extension ViewController: BoardViewDelegate {
     /// - Parameter x: セルの列です。
     /// - Parameter y: セルの行です。
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
-        guard let turn = turn else { return }
+        guard !game.isOver else { return }
         if isAnimating { return }
-        guard case .manual = Player(rawValue: playerControls[turn.index].selectedSegmentIndex)! else { return }
+        guard case .manual = Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
-        let disk = turn
+        let disk = game.turn
         let placeCompletion: (() -> Void)? = { [weak self] in
             self?.nextTurn()
         }
@@ -306,7 +303,7 @@ extension ViewController {
     /// ゲームの状態をファイルに書き出し、保存します。
     func saveGame() throws {
         var output: String = ""
-        output += turn.symbol
+        output += Symbol(disk: game.turn).rawValue
         for side in Disk.sides {
             output += playerControls[side.index].selectedSegmentIndex.description
         }
@@ -315,7 +312,8 @@ extension ViewController {
         for y in (0..<Board.height) {
             for x in (0..<Board.width) {
                 let coordinate = Coordinate(x: x, y: y)
-                output += boardView.board.disk(at: coordinate).symbol
+                let disk = boardView.board.disk(at: coordinate)
+                output += Symbol(disk: disk).rawValue
             }
             output += "\n"
         }
@@ -338,12 +336,15 @@ extension ViewController {
         
         do { // turn
             guard
-                let diskSymbol = line.popFirst(),
-                let disk = Optional<Disk>(symbol: diskSymbol.description)
+                let diskSymbol = line.popFirst()
             else {
                 throw FileIOError.read(path: path, cause: nil)
             }
-            turn = disk
+            if let disk = Symbol(rawValue: diskSymbol.description)?.disk {
+                game.turn = disk
+            } else {
+                game.isOver = true
+            }
         }
 
         // players
@@ -367,7 +368,8 @@ extension ViewController {
             while let line = lines.popFirst() {
                 var x = 0
                 for character in line {
-                    let disk = Disk?(symbol: "\(character)").flatMap { $0 }
+                    let symbol = Symbol(rawValue: "\(character)")
+                    let disk = symbol?.disk
                     let coordinate = Coordinate(x: x, y: y)
                     boardView.setDisk(disk, at: coordinate, animated: false)
                     x += 1
@@ -443,28 +445,30 @@ extension Disk {
     }
 }
 
-extension Optional where Wrapped == Disk {
-    fileprivate init?<S: StringProtocol>(symbol: S) {
-        switch symbol {
-        case "x":
-            self = .some(.dark)
-        case "o":
-            self = .some(.light)
-        case "-":
+enum Symbol: String {
+    case dark = "x"
+    case light = "o"
+    case none = "-"
+
+    init(disk: Disk?) {
+        switch disk {
+        case .dark:
+            self = .dark
+        case .light:
+            self = .light
+        case nil:
             self = .none
-        default:
-            return nil
         }
     }
-    
-    fileprivate var symbol: String {
+
+    var disk: Disk? {
         switch self {
-        case .some(.dark):
-            return "x"
-        case .some(.light):
-            return "o"
+        case .dark:
+            return .dark
+        case .light:
+            return .light
         case .none:
-            return "-"
+            return nil
         }
     }
 }
@@ -472,4 +476,9 @@ extension Optional where Wrapped == Disk {
 public struct Coordinate {
     var x: Int
     var y: Int
+}
+
+class Game {
+    var isOver = false
+    var turn: Disk = .dark
 }
