@@ -147,7 +147,55 @@ public class BoardView: UIView {
         guard let cellView = cellViewAt(coordinate) else {
             preconditionFailure() // FIXME: Add a message.
         }
-        cellView.setDisk(disk, animated: animated, completion: completion)
+        setDiskForCellView(cellView, disk: disk, animated: animated, completion: completion)
+    }
+
+    public func setDiskForCellView(_ cellView: CellView, disk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
+        let diskBefore: Disk? = cellView.disk
+        cellView.disk = disk
+        let diskAfter: Disk? = cellView.disk
+        if animated {
+            switch (diskBefore, diskAfter) {
+            case (.none, .none):
+                completion?(true)
+            case (.none, .some(let animationDisk)):
+                cellView.diskView.disk = animationDisk
+                fallthrough
+            case (.some, .none):
+                let animationDuration: TimeInterval = 0.25
+                UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
+                    cellView.layoutDiskView()
+                }, completion: { finished in
+                    completion?(finished)
+                })
+            case (.some, .some):
+                let animationDuration: TimeInterval = 0.25
+                UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
+                    cellView.layoutDiskView()
+                }, completion: { [weak self] finished in
+                    guard let self = self else { return }
+                    if cellView.diskView.disk == cellView.disk {
+                        completion?(finished)
+                    }
+                    guard let diskAfter = cellView.disk else {
+                        completion?(finished)
+                        return
+                    }
+                    cellView.diskView.disk = diskAfter
+                    UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
+                        cellView.layoutDiskView()
+                    }, completion: { finished in
+                        completion?(finished)
+                    })
+                })
+            }
+        } else {
+            if let diskAfter = diskAfter {
+                cellView.diskView.disk = diskAfter
+            }
+            completion?(true)
+            setNeedsLayout()
+        }
     }
 }
 
