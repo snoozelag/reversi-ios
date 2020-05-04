@@ -6,11 +6,7 @@ public class CellView: UIView {
     private let button: UIButton = UIButton()
     private let diskView: DiskView = DiskView()
     
-    private var _disk: Disk?
-    public var disk: Disk? {
-        get { _disk }
-        set { setDisk(newValue, animated: true) }
-    }
+    private(set) var disk: Disk?
     
     override public init(frame: CGRect) {
         super.init(frame: frame)
@@ -59,7 +55,7 @@ public class CellView: UIView {
         let cellSize = bounds.size
         let diskDiameter = Swift.min(cellSize.width, cellSize.height) * 0.8
         let diskSize: CGSize
-        if _disk == nil || diskView.disk == _disk {
+        if self.disk == nil || diskView.disk == self.disk {
             diskSize = CGSize(width: diskDiameter, height: diskDiameter)
         } else {
             diskSize = CGSize(width: 0, height: diskDiameter)
@@ -68,13 +64,13 @@ public class CellView: UIView {
             origin: CGPoint(x: (cellSize.width - diskSize.width) / 2, y: (cellSize.height - diskSize.height) / 2),
             size: diskSize
         )
-        diskView.alpha = _disk == nil ? 0.0 : 1.0
+        diskView.alpha = self.disk == nil ? 0.0 : 1.0
     }
     
     public func setDisk(_ disk: Disk?, animated: Bool, completion: ((Bool) -> Void)? = nil) {
-        let diskBefore: Disk? = _disk
-        _disk = disk
-        let diskAfter: Disk? = _disk
+        let diskBefore: Disk? = self.disk
+        self.disk = disk
+        let diskAfter: Disk? = self.disk
         if animated {
             switch (diskBefore, diskAfter) {
             case (.none, .none):
@@ -93,10 +89,10 @@ public class CellView: UIView {
                     self?.layoutDiskView()
                 }, completion: { [weak self] finished in
                     guard let self = self else { return }
-                    if self.diskView.disk == self._disk {
+                    if self.diskView.disk == self.disk {
                         completion?(finished)
                     }
-                    guard let diskAfter = self._disk else {
+                    guard let diskAfter = self.disk else {
                         completion?(finished)
                         return
                     }
