@@ -46,23 +46,7 @@ public class CellView: UIView {
         super.layoutSubviews()
         
         button.frame = bounds
-        layoutDiskView()
-    }
-    
-    public func layoutDiskView() {
-        let cellSize = bounds.size
-        let diskDiameter = Swift.min(cellSize.width, cellSize.height) * 0.8
-        let diskSize: CGSize
-        if self.disk == nil || diskView.disk == self.disk {
-            diskSize = CGSize(width: diskDiameter, height: diskDiameter)
-        } else {
-            diskSize = CGSize(width: 0, height: diskDiameter)
-        }
-        diskView.frame = CGRect(
-            origin: CGPoint(x: (cellSize.width - diskSize.width) / 2, y: (cellSize.height - diskSize.height) / 2),
-            size: diskSize
-        )
-        diskView.alpha = self.disk == nil ? 0.0 : 1.0
+        diskView.layout(cellSize: bounds.size, cellDisk: self.disk)
     }
     
     public func addTarget(_ target: Any?, action: Selector, for controlEvents: UIControl.Event) {

@@ -306,12 +306,12 @@ extension ViewController {
         switch turn {
         case .some(let side):
             messageDiskSizeConstraint.constant = messageDiskSize
-            messageDiskView.disk = side
+            messageDiskView.configure(disk: side)
             messageLabel.text = "'s turn"
         case .none:
             if let winner = self.sideWithMoreDisks() {
                 messageDiskSizeConstraint.constant = messageDiskSize
-                messageDiskView.disk = winner
+                messageDiskView.configure(disk: winner)
                 messageLabel.text = " won"
             } else {
                 messageDiskSizeConstraint.constant = 0

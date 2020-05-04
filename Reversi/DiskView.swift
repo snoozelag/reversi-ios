@@ -2,8 +2,27 @@ import UIKit
 
 public class DiskView: UIView {
     /// このビューが表示するディスクの色を決定します。
-    public var disk: Disk = .dark {
+    private var disk: Disk = .dark {
         didSet { setNeedsDisplay() }
+    }
+
+    func configure(disk: Disk) {
+        self.disk = disk
+    }
+
+    func layout(cellSize: CGSize, cellDisk: Disk?) {
+        let diskDiameter = Swift.min(cellSize.width, cellSize.height) * 0.8
+        let diskSize: CGSize
+        if cellDisk == nil || self.disk == cellDisk {
+            diskSize = CGSize(width: diskDiameter, height: diskDiameter)
+        } else {
+            diskSize = CGSize(width: 0, height: diskDiameter)
+        }
+        frame = CGRect(
+            origin: CGPoint(x: (cellSize.width - diskSize.width) / 2, y: (cellSize.height - diskSize.height) / 2),
+            size: diskSize
+        )
+        alpha = (cellDisk == nil) ? 0.0 : 1.0
     }
     
     /// Interface Builder からディスクの色を設定するためのプロパティです。 `"dark"` か `"light"` の文字列を設定します。

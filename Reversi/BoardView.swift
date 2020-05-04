@@ -159,31 +159,31 @@ public class BoardView: UIView {
             case (.none, .none):
                 completion?(true)
             case (.none, .some(let animationDisk)):
-                cellView.diskView.disk = animationDisk
+                cellView.diskView.configure(disk: animationDisk)
                 fallthrough
             case (.some, .none):
                 let animationDuration: TimeInterval = 0.25
                 UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: { [weak self] in
-                    cellView.layoutDiskView()
+                    cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: cellView.disk)
                 }, completion: { finished in
                     completion?(finished)
                 })
-            case (.some, .some):
+            case (.some(let before), .some(let after)):
                 let animationDuration: TimeInterval = 0.25
                 UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: { [weak self] in
-                    cellView.layoutDiskView()
+                    cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: cellView.disk)
                 }, completion: { [weak self] finished in
                     guard let self = self else { return }
-                    if cellView.diskView.disk == cellView.disk {
+                    if before == after {
                         completion?(finished)
                     }
                     guard let diskAfter = cellView.disk else {
                         completion?(finished)
                         return
                     }
-                    cellView.diskView.disk = diskAfter
+                    cellView.diskView.configure(disk: diskAfter)
                     UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
-                        cellView.layoutDiskView()
+                        cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: cellView.disk)
                     }, completion: { finished in
                         completion?(finished)
                     })
@@ -191,7 +191,7 @@ public class BoardView: UIView {
             }
         } else {
             if let diskAfter = diskAfter {
-                cellView.diskView.disk = diskAfter
+                cellView.diskView.configure(disk: diskAfter)
             }
             completion?(true)
             setNeedsLayout()
