@@ -108,17 +108,7 @@ public class BoardView: UIView {
         guard (0..<Board.width).contains(coordinate.x) && (0..<Board.height).contains(coordinate.y) else { return nil }
         return cellViews[coordinate.y * Board.width + coordinate.x]
     }
-    
-    /// `x`, `y` で指定されたセルの状態を、与えられた `disk` に変更します。
-    /// `animated` が `true` の場合、アニメーションが実行されます。
-    /// アニメーションの完了通知は `completion` ハンドラーで受け取ることができます。
-    /// - Parameter disk: セルに設定される新しい状態です。 `nil` はディスクが置かれていない状態を表します。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Parameter animated: セルの状態変更を表すアニメーションを表示するかどうかを指定します。
-    /// - Parameter completion: アニメーションの完了通知を受け取るハンドラーです。
-    ///     `animated` に `false` が指定された場合は状態が変更された後で即座に同期的に呼び出されます。
-    ///     ハンドラーが受け取る `Bool` 値は、 `UIView.animate()`  等に準じます。
+
     public func setDisk(_ disk: Disk?, at coordinate: Coordinate, animated: Bool, completion: ((Bool) -> Void)? = nil) {
         guard let cellView = cellViewAt(coordinate) else {
             preconditionFailure() // FIXME: Add a message.
@@ -153,10 +143,6 @@ public class BoardView: UIView {
                     if before == after {
                         completion?(finished)
                     }
-//                    guard let after = after else {
-//                        completion?(finished)
-//                        return
-//                    }
                     cellView.diskView.configure(disk: after)
                     UIView.animate(withDuration: animationDuration / 2, animations: { [weak self] in
                         cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: after)
