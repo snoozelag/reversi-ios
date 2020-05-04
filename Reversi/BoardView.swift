@@ -152,9 +152,7 @@ public class BoardView: UIView {
                 })
             }
         } else {
-            if let after = after {
-                cellView.diskView.configure(disk: after)
-            }
+            cellView.diskView.configure(disk: after)
             completion?(true)
             setNeedsLayout()
         }
