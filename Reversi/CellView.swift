@@ -4,7 +4,11 @@ public class CellView: UIView {
     private let button: UIButton = UIButton()
     let diskView: DiskView = DiskView()
     
-    public var disk: Disk?
+    private var disk: Disk?
+
+    func configure(disk: Disk?) {
+        self.disk = disk
+    }
     
     override public init(frame: CGRect) {
         super.init(frame: frame)

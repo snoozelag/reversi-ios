@@ -58,10 +58,10 @@ extension ViewController {
     func countDisks(of side: Disk) -> Int {
         var count = 0
         
-        for y in boardView.yRange {
-            for x in boardView.xRange {
+        for y in (0..<Board.height) {
+            for x in (0..<Board.width) {
                 let coordinate = Coordinate(x: x, y: y)
-                if boardView.diskAt(coordinate) == side {
+                if boardView.board.disk(at: coordinate) == side {
                     count +=  1
                 }
             }
@@ -85,7 +85,7 @@ extension ViewController {
     
     private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate] {
         
-        guard boardView.diskAt(coordinate) == nil else {
+        guard boardView.board.disk(at: coordinate) == nil else {
             return []
         }
 
@@ -111,7 +111,7 @@ extension ViewController {
                 x += direction.x
                 y += direction.y
                 
-                switch (disk, boardView.diskAt(Coordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
+                switch (disk, boardView.board.disk(at: Coordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
                 case (.dark, .some(.dark)), (.light, .some(.light)):
                     diskCoordinates.append(contentsOf: diskCoordinatesInLine)
                     break flipping
@@ -140,8 +140,8 @@ extension ViewController {
     func validMoves(for side: Disk) -> [Coordinate] {
         var coordinates: [Coordinate] = []
         
-        for y in boardView.yRange {
-            for x in boardView.xRange {
+        for y in (0..<Board.height) {
+            for x in (0..<Board.width) {
                 let coordinate = Coordinate(x: x, y: y)
                 if canPlaceDisk(side, at: coordinate) {
                     coordinates.append(coordinate)
@@ -421,10 +421,10 @@ extension ViewController {
         }
         output += "\n"
         
-        for y in boardView.yRange {
-            for x in boardView.xRange {
+        for y in (0..<Board.height) {
+            for x in (0..<Board.width) {
                 let coordinate = Coordinate(x: x, y: y)
-                output += boardView.diskAt(coordinate).symbol
+                output += boardView.board.disk(at: coordinate).symbol
             }
             output += "\n"
         }
@@ -468,7 +468,7 @@ extension ViewController {
         }
 
         do { // board
-            guard lines.count == boardView.height else {
+            guard lines.count == Board.height else {
                 throw FileIOError.read(path: path, cause: nil)
             }
             
@@ -481,12 +481,12 @@ extension ViewController {
                     boardView.setDisk(disk, at: coordinate, animated: false)
                     x += 1
                 }
-                guard x == boardView.width else {
+                guard x == Board.width else {
                     throw FileIOError.read(path: path, cause: nil)
                 }
                 y += 1
             }
-            guard y == boardView.height else {
+            guard y == Board.height else {
                 throw FileIOError.read(path: path, cause: nil)
             }
         }
