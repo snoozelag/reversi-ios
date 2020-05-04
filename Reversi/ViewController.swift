@@ -42,105 +42,6 @@ class ViewController: UIViewController {
 // MARK: Reversi logics
 
 extension ViewController {
-    /// `side` で指定された色のディスクが盤上に置かれている枚数を返します。
-    /// - Parameter side: 数えるディスクの色です。
-    /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
-    func countDisks(of side: Disk) -> Int {
-        var count = 0
-        
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let coordinate = Coordinate(x: x, y: y)
-                if boardView.board.disk(at: coordinate) == side {
-                    count +=  1
-                }
-            }
-        }
-        
-        return count
-    }
-    
-    /// 盤上に置かれたディスクの枚数が多い方の色を返します。
-    /// 引き分けの場合は `nil` が返されます。
-    /// - Returns: 盤上に置かれたディスクの枚数が多い方の色です。引き分けの場合は `nil` を返します。
-    func sideWithMoreDisks() -> Disk? {
-        let darkCount = countDisks(of: .dark)
-        let lightCount = countDisks(of: .light)
-        if darkCount == lightCount {
-            return nil
-        } else {
-            return darkCount > lightCount ? .dark : .light
-        }
-    }
-    
-    private func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate] {
-        
-        guard boardView.board.disk(at: coordinate) == nil else {
-            return []
-        }
-
-        let directions = [
-            (x: -1, y: -1),
-            (x:  0, y: -1),
-            (x:  1, y: -1),
-            (x:  1, y:  0),
-            (x:  1, y:  1),
-            (x:  0, y:  1),
-            (x: -1, y:  0),
-            (x: -1, y:  1),
-        ]
-        
-        var diskCoordinates: [Coordinate] = []
-        
-        for direction in directions {
-            var x = coordinate.x
-            var y = coordinate.y
-            
-            var diskCoordinatesInLine: [Coordinate] = []
-            flipping: while true {
-                x += direction.x
-                y += direction.y
-                
-                switch (disk, boardView.board.disk(at: Coordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
-                case (.dark, .some(.dark)), (.light, .some(.light)):
-                    diskCoordinates.append(contentsOf: diskCoordinatesInLine)
-                    break flipping
-                case (.dark, .some(.light)), (.light, .some(.dark)):
-                    diskCoordinatesInLine.append(Coordinate(x: x, y: y))
-                case (_, .none):
-                    break flipping
-                }
-            }
-        }
-        
-        return diskCoordinates
-    }
-    
-    /// `x`, `y` で指定されたセルに、 `disk` が置けるかを調べます。
-    /// ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要があります。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
-    func canPlaceDisk(_ disk: Disk, at coordinate: Coordinate) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate).isEmpty
-    }
-    
-    /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
-    /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
-    func validMoves(for side: Disk) -> [Coordinate] {
-        var coordinates: [Coordinate] = []
-        
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let coordinate = Coordinate(x: x, y: y)
-                if canPlaceDisk(side, at: coordinate) {
-                    coordinates.append(coordinate)
-                }
-            }
-        }
-        
-        return coordinates
-    }
     
     /// `coordinates` で指定されたセルに、アニメーションしながら順番に `disk` を置く。
     /// `coordinates` から先頭の座標を取得してそのセルに `disk` を置き、
@@ -207,8 +108,8 @@ extension ViewController {
 
         turn.flip()
         
-        if validMoves(for: turn).isEmpty {
-            if validMoves(for: turn.flipped).isEmpty {
+        if boardView.board.validMoves(for: turn).isEmpty {
+            if boardView.board.validMoves(for: turn.flipped).isEmpty {
                 self.turn = nil
                 updateMessageViews()
             } else {
@@ -235,7 +136,7 @@ extension ViewController {
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playTurnOfComputer() {
         guard let turn = self.turn else { preconditionFailure() }
-        let coordinate = validMoves(for: turn).randomElement()!
+        let coordinate = boardView.board.validMoves(for: turn).randomElement()!
 
         playerActivityIndicators[turn.index].startAnimating()
         
@@ -255,7 +156,7 @@ extension ViewController {
                 self?.nextTurn()
             }
 
-            let diskCoordinates = self.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+            let diskCoordinates = self.boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
             guard !diskCoordinates.isEmpty else {
 //                throw DiskPlacementError(disk: disk, x: x, y: y)
                 return
@@ -287,7 +188,7 @@ extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     func updateCountLabels() {
         for side in Disk.sides {
-            countLabels[side.index].text = "\(countDisks(of: side))"
+            countLabels[side.index].text = "\(boardView.board.countDisks(of: side))"
         }
     }
     
@@ -299,7 +200,7 @@ extension ViewController {
             messageDiskView.configure(disk: side)
             messageLabel.text = "'s turn"
         case .none:
-            if let winner = self.sideWithMoreDisks() {
+            if let winner = boardView.board.sideWithMoreDisks() {
                 messageDiskView.isHidden = false
                 messageDiskView.configure(disk: winner)
                 messageLabel.text = " won"
@@ -372,7 +273,7 @@ extension ViewController: BoardViewDelegate {
             self?.nextTurn()
         }
 
-        let diskCoordinates = self.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+        let diskCoordinates = boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
         guard !diskCoordinates.isEmpty else {
             //                throw DiskPlacementError(disk: disk, x: x, y: y)
             return
