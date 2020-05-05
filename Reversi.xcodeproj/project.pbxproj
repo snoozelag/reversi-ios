@@ -18,6 +18,7 @@
 		D642BDD623AA0B3900396732 /* CellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDD523AA0B3900396732 /* CellView.swift */; };
 		D642BDD823AA0B5700396732 /* Disk.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDD723AA0B5700396732 /* Disk.swift */; };
 		D642BDDC23AA137C00396732 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDDB23AA137C00396732 /* BoardView.swift */; };
+		F0B5BCB0246108DE00B1B944 /* Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B5BCAF246108DE00B1B944 /* Board.swift */; };
 		F0F3BE162460E2F600F7F42E /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F3BE152460E2F600F7F42E /* Game.swift */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +48,7 @@
 		D642BDD523AA0B3900396732 /* CellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CellView.swift; sourceTree = "<group>"; };
 		D642BDD723AA0B5700396732 /* Disk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Disk.swift; sourceTree = "<group>"; };
 		D642BDDB23AA137C00396732 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		F0B5BCAF246108DE00B1B944 /* Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Board.swift; sourceTree = "<group>"; };
 		F0F3BE152460E2F600F7F42E /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -124,6 +126,7 @@
 			isa = PBXGroup;
 			children = (
 				F0F3BE152460E2F600F7F42E /* Game.swift */,
+				F0B5BCAF246108DE00B1B944 /* Board.swift */,
 				D642BDD723AA0B5700396732 /* Disk.swift */,
 			);
 			name = Model;
@@ -247,6 +250,7 @@
 				D642BDB423A9FE4500396732 /* AppDelegate.swift in Sources */,
 				D642BDB623A9FE4500396732 /* SceneDelegate.swift in Sources */,
 				F0F3BE162460E2F600F7F42E /* Game.swift in Sources */,
+				F0B5BCB0246108DE00B1B944 /* Board.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

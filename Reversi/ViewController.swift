@@ -21,14 +21,13 @@ class ViewController: UIViewController {
         boardView.delegate = self
         
         do {
-            let board = try game.load()
-            boardView.board = board
-            boardView.configureBoard()
+            try game.load()
         } catch _ {
             self.game = Game()
-            try? game.save(board: boardView.board)
+            try? game.save()
         }
 
+        boardView.configure(board: game.board)
         updateSegmentedControls()
         updateMessageViews()
         updateCountLabels()
@@ -88,14 +87,16 @@ extension ViewController {
         }
         
         let animationCanceller = self.animationCanceller!
-        boardView.setDisk(disk, at: coordinate, animated: true) { [weak self] isFinished in
+        let before = game.board.disk(at: coordinate)
+        game.board.setDisk(disk, at: coordinate)
+        boardView.setDisk(after: disk, before: before, at: coordinate, animated: true) { [weak self] isFinished in
             guard let self = self else { return }
             if animationCanceller.isCancelled { return }
             if isFinished {
                 self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
             } else {
                 for coordinate in coordinates {
-                    self.boardView.setDisk(disk, at: coordinate, animated: false)
+                    self.boardView.setDisk(after: disk, before: before, at: coordinate, animated: false)
                 }
                 completion()
             }
@@ -121,8 +122,8 @@ extension ViewController {
 
         game.turn.flip()
         
-        if boardView.board.validMoves(for: game.turn).isEmpty {
-            if boardView.board.validMoves(for: game.turn.flipped).isEmpty {
+        if game.board.validMoves(for: game.turn).isEmpty {
+            if game.board.validMoves(for: game.turn.flipped).isEmpty {
                 game.isOver = true
                 updateMessageViews()
             } else {
@@ -139,7 +140,7 @@ extension ViewController {
 
     private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]?) -> Void) {
         playerActivityIndicators[game.turn.index].startAnimating()
-        let coordinate = boardView.board.validMoves(for: game.turn).randomElement()!
+        let coordinate = game.board.validMoves(for: game.turn).randomElement()!
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
             self.playerCancellers[turn] = nil
@@ -152,7 +153,7 @@ extension ViewController {
             if canceller.isCancelled { return }
             cleanUp()
             let disk = turn
-            let diskCoordinates = self.boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+            let diskCoordinates = self.game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
             guard !diskCoordinates.isEmpty else {
                 completion(nil)
                 return
@@ -189,7 +190,7 @@ extension ViewController {
             cleanUp()
 
             completion?()
-            try? self.game.save(board: self.boardView.board)
+            try? self.game.save()
             self.updateCountLabels()
         }
     }
@@ -201,7 +202,7 @@ extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     func updateCountLabels() {
         for side in Disk.sides {
-            countLabels[side.index].text = "\(boardView.board.countDisks(of: side))"
+            countLabels[side.index].text = "\(game.board.countDisks(of: side))"
         }
     }
 
@@ -214,7 +215,7 @@ extension ViewController {
     /// 現在の状況に応じてメッセージを表示します。
     func updateMessageViews() {
         if game.isOver {
-            if let winner = boardView.board.sideWithMoreDisks() {
+            if let winner = game.board.sideWithMoreDisks() {
                 messageDiskView.isHidden = false
                 messageDiskView.configure(disk: winner)
                 messageLabel.text = " won"
@@ -249,7 +250,8 @@ extension ViewController {
             }
 
             self.game = Game()
-            try? self.game.save(board: self.boardView.board)
+            try? self.game.save()
+            self.boardView.configure(board: self.game.board)
             self.updateSegmentedControls()
             self.updateMessageViews()
             self.updateCountLabels()
@@ -263,7 +265,7 @@ extension ViewController {
         let side: Disk = Disk(index: playerControls.firstIndex(of: sender)!)
 
         game.players[side.index] = Player(rawValue: sender.selectedSegmentIndex)!
-        try? game.save(board: boardView.board)
+        try? game.save()
 
         if let canceller = playerCancellers[side] {
             canceller.cancel()
@@ -286,7 +288,7 @@ extension ViewController: BoardViewDelegate {
         guard case .manual = Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
         let disk = game.turn
-        let diskCoordinates = boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+        let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
         guard !diskCoordinates.isEmpty else {
             return
         }

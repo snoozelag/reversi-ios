@@ -17,6 +17,7 @@ class Game {
     var isOver = false
     var turn: Disk = .dark
     var players: [Player] = [.manual, .manual]
+    var board = Board()
 }
 
 // MARK: Save and Load
@@ -28,7 +29,7 @@ extension Game {
        }
 
     /// ゲームの状態をファイルに書き出し、保存します。
-    func save(board: Board) throws {
+    func save() throws {
         var output: String = ""
         output += Symbol(disk: turn).rawValue
         for side in Disk.sides {
@@ -53,7 +54,7 @@ extension Game {
     }
 
     /// ゲームの状態をファイルから読み込み、復元します。
-    func load() throws -> Board {
+    func load() throws {
         let input = try String(contentsOfFile: path, encoding: .utf8)
         var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
 
@@ -86,7 +87,7 @@ extension Game {
             players[side.index] = player
         }
 
-        var board = Board()
+        let loadingBoard = Board()
         do { // board
             guard lines.count == Board.height else {
                 throw FileIOError.read(path: path, cause: nil)
@@ -99,7 +100,7 @@ extension Game {
                     let symbol = Symbol(rawValue: "\(character)")
                     let disk = symbol?.disk
                     let coordinate = Coordinate(x: x, y: y)
-                    board.setDisk(disk, at: coordinate)
+                    loadingBoard.setDisk(disk, at: coordinate)
                     x += 1
                 }
                 guard x == Board.width else {
@@ -111,7 +112,7 @@ extension Game {
                 throw FileIOError.read(path: path, cause: nil)
             }
         }
-        return board
+        self.board = loadingBoard
     }
 
     enum FileIOError: Error {
