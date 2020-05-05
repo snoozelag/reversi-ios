@@ -13,7 +13,6 @@ class ViewController: UIViewController {
     
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
-    
     private var playerCancellers: [Disk: Canceller] = [:]
     
     override func viewDidLoad() {
@@ -137,55 +136,62 @@ extension ViewController {
             waitForPlayer()
         }
     }
+
+    private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]?) -> Void) {
+        playerActivityIndicators[game.turn.index].startAnimating()
+        let coordinate = boardView.board.validMoves(for: game.turn).randomElement()!
+        let cleanUp: () -> Void = { [weak self] in
+            guard let self = self else { return }
+            self.playerCancellers[turn] = nil
+            self.playerActivityIndicators[turn.index].stopAnimating()
+        }
+        let canceller = Canceller(cleanUp)
+        playerCancellers[turn] = canceller
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self else { return }
+            if canceller.isCancelled { return }
+            cleanUp()
+            let disk = turn
+            let diskCoordinates = self.boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+            guard !diskCoordinates.isEmpty else {
+                completion(nil)
+                return
+            }
+            completion([coordinate] + diskCoordinates)
+        }
+    }
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     func playIfTurnOfComputer(playerIndex: Int) {
         let turn = game.turn
         guard turn.index == playerIndex, case .computer = game.players[playerIndex] else { return }
         guard !game.isOver else { preconditionFailure() }
-        let coordinate = boardView.board.validMoves(for: game.turn).randomElement()!
 
-        playerActivityIndicators[game.turn.index].startAnimating()
-        
+        getComputerTurnCoordinates(turn: turn, completion: { [weak self] coordinates in
+            guard let self = self else { return }
+            guard let coordinates = coordinates else { return }
+
+            self.flip(disk: turn, coordinates: coordinates, completion: { [weak self] in
+                self?.nextTurn()
+            })
+        })
+    }
+
+    private func flip(disk: Disk, coordinates: [Coordinate], completion: (() -> Void)?) {
         let cleanUp: () -> Void = { [weak self] in
-            guard let self = self else { return }
-            self.playerActivityIndicators[turn.index].stopAnimating()
-            self.playerCancellers[turn] = nil
+            self?.animationCanceller = nil
         }
-        let canceller = Canceller(cleanUp)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        self.animationCanceller = Canceller(cleanUp)
+        self.animateSettingDisks(at: coordinates, to: disk) { [weak self] in
             guard let self = self else { return }
+            guard let canceller = self.animationCanceller else { return }
             if canceller.isCancelled { return }
             cleanUp()
 
-            let disk = turn
-            let placeCompletion: (() -> Void)? = { [weak self] in
-                self?.nextTurn()
-            }
-
-            let diskCoordinates = self.boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
-            guard !diskCoordinates.isEmpty else {
-//                throw DiskPlacementError(disk: disk, x: x, y: y)
-                return
-            }
-
-            let cleanUp: () -> Void = { [weak self] in
-                self?.animationCanceller = nil
-            }
-            self.animationCanceller = Canceller(cleanUp)
-            self.animateSettingDisks(at: [coordinate] + diskCoordinates, to: disk) { [weak self] in
-                guard let self = self else { return }
-                guard let canceller = self.animationCanceller else { return }
-                if canceller.isCancelled { return }
-                cleanUp()
-
-                placeCompletion?()
-                try? self.game.save(board: self.boardView.board)
-                self.updateCountLabels()
-            }
+            completion?()
+            try? self.game.save(board: self.boardView.board)
+            self.updateCountLabels()
         }
-        
-        playerCancellers[game.turn] = canceller
     }
 }
 
@@ -251,18 +257,18 @@ extension ViewController {
             self.waitForPlayer()
         })
     }
-    
+
     /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
     @IBAction func changePlayerControlSegment(_ sender: UISegmentedControl) {
         let side: Disk = Disk(index: playerControls.firstIndex(of: sender)!)
 
         game.players[side.index] = Player(rawValue: sender.selectedSegmentIndex)!
         try? game.save(board: boardView.board)
-        
+
         if let canceller = playerCancellers[side] {
             canceller.cancel()
         }
-        
+
         if !isAnimating, !game.isOver {
             playIfTurnOfComputer(playerIndex: side.index)
         }
@@ -280,30 +286,14 @@ extension ViewController: BoardViewDelegate {
         guard case .manual = Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
         let disk = game.turn
-        let placeCompletion: (() -> Void)? = { [weak self] in
-            self?.nextTurn()
-        }
-
         let diskCoordinates = boardView.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
         guard !diskCoordinates.isEmpty else {
-            //                throw DiskPlacementError(disk: disk, x: x, y: y)
             return
         }
 
-        let cleanUp: () -> Void = { [weak self] in
-            self?.animationCanceller = nil
-        }
-        self.animationCanceller = Canceller(cleanUp)
-        self.animateSettingDisks(at: [coordinate] + diskCoordinates, to: disk) { [weak self] in
-            guard let self = self else { return }
-            guard let canceller = self.animationCanceller else { return }
-            if canceller.isCancelled { return }
-            cleanUp()
-
-            placeCompletion?()
-            try? self.game.save(board: boardView.board)
-            self.updateCountLabels()
-        }
+        self.flip(disk: disk, coordinates: [coordinate] + diskCoordinates, completion: { [weak self] in
+            self?.nextTurn()
+        })
     }
 }
 
