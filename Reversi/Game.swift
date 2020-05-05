@@ -13,11 +13,31 @@ enum Player: Int {
     case computer = 1
 }
 
+enum NextTurn {
+    case change
+    case pass
+    case gameOver
+}
+
 class Game {
     var isOver = false
     var turn: Disk = .dark
     var players: [Player] = [.manual, .manual]
     var board = Board()
+
+    func flipTurn() -> NextTurn {
+        turn.flip()
+        if board.validMoves(for: turn).isEmpty {
+            if board.validMoves(for: turn.flipped).isEmpty {
+                isOver = true
+                return .gameOver
+            } else {
+                return .pass
+            }
+        } else {
+            return .change
+        }
+    }
 }
 
 // MARK: Save and Load

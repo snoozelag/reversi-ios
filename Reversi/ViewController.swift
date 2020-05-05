@@ -1,8 +1,8 @@
 import UIKit
 
 class ViewController: UIViewController {
+
     @IBOutlet private var boardView: BoardView!
-    
     @IBOutlet private var messageDiskView: DiskView!
     @IBOutlet private var messageLabel: UILabel!
     @IBOutlet private var playerControls: [UISegmentedControl]!
@@ -79,29 +79,18 @@ extension ViewController {
         guard !game.isOver else { return }
         playIfTurnOfComputer(playerIndex: game.turn.index)
     }
-    
-    /// プレイヤーの行動後、そのプレイヤーのターンを終了して次のターンを開始します。
-    /// もし、次のプレイヤーに有効な手が存在しない場合、パスとなります。
-    /// 両プレイヤーに有効な手がない場合、ゲームの勝敗を表示します。
     func nextTurn() {
-        guard !game.isOver else { return }
-
-        game.turn.flip()
-        
-        if game.board.validMoves(for: game.turn).isEmpty {
-            if game.board.validMoves(for: game.turn.flipped).isEmpty {
-                game.isOver = true
-                updateMessageViews()
-            } else {
-                updateMessageViews()
-                showPassDialog(dismissHandler: { [weak self] in
-                    self?.nextTurn()
-                })
-            }
-        } else {
-            updateMessageViews()
-            waitForPlayer()
+        switch game.flipTurn() {
+        case .change:
+            playIfTurnOfComputer(playerIndex: game.turn.index)
+        case .pass:
+            showPassDialog(dismissHandler: { [weak self] in
+                self?.nextTurn()
+            })
+        case .gameOver:
+            break
         }
+        updateMessageViews()
     }
 
     private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]) -> Void) {
