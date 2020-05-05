@@ -37,6 +37,13 @@ public class Board {
         lines[coordinate.y][coordinate.x].disk = disk
     }
 
+    func setDisks(_ disk: Disk?, at coordinates: [Coordinate]) {
+        coordinates.forEach { coordinate in
+            guard (0..<Board.width) ~= coordinate.x && (0..<Board.height) ~= coordinate.y else { return }
+            self.lines[coordinate.y][coordinate.x].disk = disk
+        }
+    }
+
     func disk(at coordinate: Coordinate) -> Disk? {
         guard (0..<Board.width) ~= coordinate.x && (0..<Board.height) ~= coordinate.y else { return nil }
         return lines[coordinate.y][coordinate.x].disk
@@ -73,10 +80,10 @@ public class Board {
         }
     }
 
-    func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate] {
+    func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate]? {
 
         guard self.disk(at: coordinate) == nil else {
-            return []
+            return nil
         }
 
         let directions = [
@@ -113,7 +120,7 @@ public class Board {
             }
         }
 
-        return diskCoordinates
+        return diskCoordinates.isEmpty ? nil : diskCoordinates
     }
 
     /// `x`, `y` で指定されたセルに、 `disk` が置けるかを調べます。
@@ -122,7 +129,7 @@ public class Board {
     /// - Parameter y: セルの行です。
     /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
     func canPlaceDisk(_ disk: Disk, at coordinate: Coordinate) -> Bool {
-        !flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate).isEmpty
+        return flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate) != nil
     }
 
     /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。

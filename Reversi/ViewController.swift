@@ -70,40 +70,6 @@ class ViewController: UIViewController {
     }
 }
 
-// MARK: Reversi logics
-
-extension ViewController {
-    
-    /// `coordinates` で指定されたセルに、アニメーションしながら順番に `disk` を置く。
-    /// `coordinates` から先頭の座標を取得してそのセルに `disk` を置き、
-    /// 残りの座標についてこのメソッドを再帰呼び出しすることで処理が行われる。
-    /// すべてのセルに `disk` が置けたら `completion` ハンドラーが呼び出される。
-    private func animateSettingDisks<C: Collection>(at coordinates: C, to disk: Disk, completion: @escaping () -> Void)
-        where C.Element == Coordinate
-    {
-        guard let coordinate = coordinates.first else {
-            completion()
-            return
-        }
-        
-        let animationCanceller = self.animationCanceller!
-        let before = game.board.disk(at: coordinate)
-        game.board.setDisk(disk, at: coordinate)
-        boardView.setDisk(after: disk, before: before, at: coordinate, animated: true) { [weak self] isFinished in
-            guard let self = self else { return }
-            if animationCanceller.isCancelled { return }
-            if isFinished {
-                self.animateSettingDisks(at: coordinates.dropFirst(), to: disk, completion: completion)
-            } else {
-                for coordinate in coordinates {
-                    self.boardView.setDisk(after: disk, before: before, at: coordinate, animated: false)
-                }
-                completion()
-            }
-        }
-    }
-}
-
 // MARK: Game management
 
 extension ViewController {
@@ -138,7 +104,7 @@ extension ViewController {
         }
     }
 
-    private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]?) -> Void) {
+    private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]) -> Void) {
         playerActivityIndicators[game.turn.index].startAnimating()
         let coordinate = game.board.validMoves(for: game.turn).randomElement()!
         let cleanUp: () -> Void = { [weak self] in
@@ -153,11 +119,7 @@ extension ViewController {
             if canceller.isCancelled { return }
             cleanUp()
             let disk = turn
-            let diskCoordinates = self.game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
-            guard !diskCoordinates.isEmpty else {
-                completion(nil)
-                return
-            }
+            let diskCoordinates = self.game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
             completion([coordinate] + diskCoordinates)
         }
     }
@@ -169,10 +131,7 @@ extension ViewController {
         guard !game.isOver else { preconditionFailure() }
 
         getComputerTurnCoordinates(turn: turn, completion: { [weak self] coordinates in
-            guard let self = self else { return }
-            guard let coordinates = coordinates else { return }
-
-            self.flip(disk: turn, coordinates: coordinates, completion: { [weak self] in
+            self?.flip(disk: turn, coordinates: coordinates, completion: {
                 self?.nextTurn()
             })
         })
@@ -183,16 +142,20 @@ extension ViewController {
             self?.animationCanceller = nil
         }
         self.animationCanceller = Canceller(cleanUp)
-        self.animateSettingDisks(at: coordinates, to: disk) { [weak self] in
-            guard let self = self else { return }
-            guard let canceller = self.animationCanceller else { return }
-            if canceller.isCancelled { return }
-            cleanUp()
+        let squires = coordinates.map { game.board.lines[$0.y][$0.x] }
+        let animationCanceller = self.animationCanceller!
 
-            completion?()
-            try? self.game.save()
-            self.updateCountLabels()
-        }
+        boardView.setDisks(after: disk, at: squires, animated: false, flippedHandler: nil, completion: { [weak self] in
+                guard let self = self else { return }
+                if animationCanceller.isCancelled { return }
+                cleanUp()
+
+                self.game.board.setDisks(disk, at: coordinates)
+                try? self.game.save()
+                self.updateCountLabels()
+
+                completion?()
+        })
     }
 }
 
@@ -288,14 +251,14 @@ extension ViewController: BoardViewDelegate {
         guard case .manual = Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! else { return }
         // try? because doing nothing when an error occurs
         let disk = game.turn
-        let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)
+        let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
         guard !diskCoordinates.isEmpty else {
             return
         }
 
-        self.flip(disk: disk, coordinates: [coordinate] + diskCoordinates, completion: { [weak self] in
+        self.flip(disk: disk, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()
-        })
+        }
     }
 }
 
