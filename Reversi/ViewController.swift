@@ -43,6 +43,33 @@ class ViewController: UIViewController {
         viewHasAppeared = true
         waitForPlayer()
     }
+
+    // MARK: - Alert
+
+    private func showResetDialog(okHandler: @escaping () -> Void) {
+        let alertController = UIAlertController(
+            title: "Confirmation",
+            message: "Do you really want to reset the game?",
+            preferredStyle: .alert
+        )
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        alertController.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
+            okHandler()
+        }))
+        present(alertController, animated: true)
+    }
+
+    private func showPassDialog(dismissHandler: @escaping () -> Void) {
+        let alertController = UIAlertController(
+            title: "Pass",
+            message: "Cannot place a disk.",
+            preferredStyle: .alert
+        )
+        alertController.addAction(UIAlertAction(title: "Dismiss", style: .default) { _ in
+            dismissHandler()
+        })
+        present(alertController, animated: true)
+    }
 }
 
 // MARK: Reversi logics
@@ -84,12 +111,7 @@ extension ViewController {
     /// プレイヤーの行動を待ちます。
     func waitForPlayer() {
         guard !game.isOver else { return }
-        switch Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! {
-        case .manual:
-            break
-        case .computer:
-            playTurnOfComputer()
-        }
+        playIfTurnOfComputer(playerIndex: game.turn.index)
     }
     
     /// プレイヤーの行動後、そのプレイヤーのターンを終了して次のターンを開始します。
@@ -106,16 +128,9 @@ extension ViewController {
                 updateMessageViews()
             } else {
                 updateMessageViews()
-                
-                let alertController = UIAlertController(
-                    title: "Pass",
-                    message: "Cannot place a disk.",
-                    preferredStyle: .alert
-                )
-                alertController.addAction(UIAlertAction(title: "Dismiss", style: .default) { [weak self] _ in
+                showPassDialog(dismissHandler: { [weak self] in
                     self?.nextTurn()
                 })
-                present(alertController, animated: true)
             }
         } else {
             updateMessageViews()
@@ -124,8 +139,9 @@ extension ViewController {
     }
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
-    func playTurnOfComputer() {
+    func playIfTurnOfComputer(playerIndex: Int) {
         let turn = game.turn
+        guard turn.index == playerIndex, case .computer = game.players[playerIndex] else { return }
         guard !game.isOver else { preconditionFailure() }
         let coordinate = boardView.board.validMoves(for: game.turn).randomElement()!
 
@@ -215,18 +231,12 @@ extension ViewController {
     /// アラートを表示して、ゲームを初期化して良いか確認し、
     /// "OK" が選択された場合ゲームを初期化します。
     @IBAction func pressResetButton(_ sender: UIButton) {
-        let alertController = UIAlertController(
-            title: "Confirmation",
-            message: "Do you really want to reset the game?",
-            preferredStyle: .alert
-        )
-        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in })
-        alertController.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+        showResetDialog(okHandler: { [weak self] in
             guard let self = self else { return }
-            
+
             self.animationCanceller?.cancel()
             self.animationCanceller = nil
-            
+
             for side in Disk.sides {
                 self.playerCancellers[side]?.cancel()
                 self.playerCancellers.removeValue(forKey: side)
@@ -240,7 +250,6 @@ extension ViewController {
 
             self.waitForPlayer()
         })
-        present(alertController, animated: true)
     }
     
     /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
@@ -254,8 +263,8 @@ extension ViewController {
             canceller.cancel()
         }
         
-        if !isAnimating, !game.isOver, case .computer = Player(rawValue: sender.selectedSegmentIndex)! {
-            playTurnOfComputer()
+        if !isAnimating, !game.isOver {
+            playIfTurnOfComputer(playerIndex: side.index)
         }
     }
 }
