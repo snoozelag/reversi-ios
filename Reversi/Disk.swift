@@ -1,4 +1,4 @@
-public enum Disk {
+public enum Disk: CaseIterable {
     case dark
     case light
 }
@@ -8,7 +8,7 @@ extension Disk: Hashable {}
 extension Disk {
     /// `Disk` のすべての値を列挙した `Array` 、 `[.dark, .light]` を返します。
     public static var sides: [Disk] {
-        [.dark, .light]
+        return Disk.allCases
     }
     
     /// 自身の値を反転させた値（ `.dark` なら `.light` 、 `.light` なら `.dark` ）を返します。
