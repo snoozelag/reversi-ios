@@ -39,7 +39,7 @@ class ViewController: UIViewController {
         
         if viewHasAppeared { return }
         viewHasAppeared = true
-        waitForPlayer()
+        playIfTurnOfComputer(playerIndex: game.turn.index)
     }
 
     // MARK: - Alert
@@ -74,11 +74,6 @@ class ViewController: UIViewController {
 
 extension ViewController {
 
-    /// プレイヤーの行動を待ちます。
-    func waitForPlayer() {
-        guard !game.isOver else { return }
-        playIfTurnOfComputer(playerIndex: game.turn.index)
-    }
     func nextTurn() {
         switch game.flipTurn() {
         case .change:
@@ -186,9 +181,7 @@ extension ViewController {
 // MARK: Inputs
 
 extension ViewController {
-    /// リセットボタンが押された場合に呼ばれるハンドラーです。
-    /// アラートを表示して、ゲームを初期化して良いか確認し、
-    /// "OK" が選択された場合ゲームを初期化します。
+
     @IBAction func pressResetButton(_ sender: UIButton) {
         showResetDialog(okHandler: { [weak self] in
             guard let self = self else { return }
@@ -207,16 +200,15 @@ extension ViewController {
             self.updateSegmentedControls()
             self.updateMessageViews()
             self.updateCountLabels()
-
-            self.waitForPlayer()
+            self.playIfTurnOfComputer(playerIndex: self.game.turn.index)
         })
     }
 
     /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
     @IBAction func changePlayerControlSegment(_ sender: UISegmentedControl) {
-        let side: Disk = Disk(index: playerControls.firstIndex(of: sender)!)
-
+        let side = Disk(index: playerControls.firstIndex(of: sender)!)
         game.players[side.index] = Player(rawValue: sender.selectedSegmentIndex)!
+
         try? game.save()
 
         if let canceller = playerCancellers[side] {
@@ -230,22 +222,12 @@ extension ViewController {
 }
 
 extension ViewController: BoardViewDelegate {
-    /// `boardView` の `x`, `y` で指定されるセルがタップされたときに呼ばれます。
-    /// - Parameter boardView: セルをタップされた `BoardView` インスタンスです。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
-        guard !game.isOver else { return }
-        if isAnimating { return }
-        guard case .manual = Player(rawValue: playerControls[game.turn.index].selectedSegmentIndex)! else { return }
-        // try? because doing nothing when an error occurs
-        let disk = game.turn
-        let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
-        guard !diskCoordinates.isEmpty else {
-            return
-        }
 
-        self.flip(disk: disk, coordinates: [coordinate] + diskCoordinates) { [weak self] in
+    func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
+        let disk = game.turn
+        guard !game.isOver, !isAnimating, case .manual = game.players[disk.index] else { return }
+        guard let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate) else { return }
+        flip(disk: disk, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()
         }
     }
