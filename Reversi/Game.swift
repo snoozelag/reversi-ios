@@ -119,4 +119,32 @@ extension Game {
         case write(path: String, cause: Error?)
         case read(path: String, cause: Error?)
     }
+
+    private enum Symbol: String {
+        case dark = "x"
+        case light = "o"
+        case none = "-"
+
+        init(disk: Disk?) {
+            switch disk {
+            case .dark:
+                self = .dark
+            case .light:
+                self = .light
+            case nil:
+                self = .none
+            }
+        }
+
+        var disk: Disk? {
+            switch self {
+            case .dark:
+                return .dark
+            case .light:
+                return .light
+            case .none:
+                return nil
+            }
+        }
+    }
 }

@@ -157,7 +157,8 @@ public class Board {
     }
 }
 
-public struct Squire {
-    var disk: Disk?
-    var coordinate: Coordinate
+struct DiskPlacementError: Error {
+    let disk: Disk
+    let x: Int
+    let y: Int
 }

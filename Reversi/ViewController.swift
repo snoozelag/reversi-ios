@@ -314,12 +314,6 @@ final class Canceller {
     }
 }
 
-struct DiskPlacementError: Error {
-    let disk: Disk
-    let x: Int
-    let y: Int
-}
-
 // MARK: File-private extensions
 
 extension Disk {
@@ -340,37 +334,3 @@ extension Disk {
         }
     }
 }
-
-enum Symbol: String {
-    case dark = "x"
-    case light = "o"
-    case none = "-"
-
-    init(disk: Disk?) {
-        switch disk {
-        case .dark:
-            self = .dark
-        case .light:
-            self = .light
-        case nil:
-            self = .none
-        }
-    }
-
-    var disk: Disk? {
-        switch self {
-        case .dark:
-            return .dark
-        case .light:
-            return .light
-        case .none:
-            return nil
-        }
-    }
-}
-
-public struct Coordinate {
-    var x: Int
-    var y: Int
-}
-

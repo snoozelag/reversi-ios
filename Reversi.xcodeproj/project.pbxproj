@@ -19,6 +19,7 @@
 		D642BDD823AA0B5700396732 /* Disk.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDD723AA0B5700396732 /* Disk.swift */; };
 		D642BDDC23AA137C00396732 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDDB23AA137C00396732 /* BoardView.swift */; };
 		F0B5BCB0246108DE00B1B944 /* Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B5BCAF246108DE00B1B944 /* Board.swift */; };
+		F0B5BCB224610A0300B1B944 /* Squire.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B5BCB124610A0300B1B944 /* Squire.swift */; };
 		F0F3BE162460E2F600F7F42E /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F3BE152460E2F600F7F42E /* Game.swift */; };
 /* End PBXBuildFile section */
 
@@ -49,6 +50,7 @@
 		D642BDD723AA0B5700396732 /* Disk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Disk.swift; sourceTree = "<group>"; };
 		D642BDDB23AA137C00396732 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		F0B5BCAF246108DE00B1B944 /* Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Board.swift; sourceTree = "<group>"; };
+		F0B5BCB124610A0300B1B944 /* Squire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Squire.swift; sourceTree = "<group>"; };
 		F0F3BE152460E2F600F7F42E /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -127,6 +129,7 @@
 			children = (
 				F0F3BE152460E2F600F7F42E /* Game.swift */,
 				F0B5BCAF246108DE00B1B944 /* Board.swift */,
+				F0B5BCB124610A0300B1B944 /* Squire.swift */,
 				D642BDD723AA0B5700396732 /* Disk.swift */,
 			);
 			name = Model;
@@ -244,6 +247,7 @@
 			files = (
 				D636B39F23D35043007F370F /* DiskView.swift in Sources */,
 				D642BDD623AA0B3900396732 /* CellView.swift in Sources */,
+				F0B5BCB224610A0300B1B944 /* Squire.swift in Sources */,
 				D642BDD823AA0B5700396732 /* Disk.swift in Sources */,
 				D642BDB823A9FE4500396732 /* ViewController.swift in Sources */,
 				D642BDDC23AA137C00396732 /* BoardView.swift in Sources */,
