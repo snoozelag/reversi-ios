@@ -5,7 +5,7 @@ private let lineWidth: CGFloat = 2
 public class BoardView: UIView {
     private var cellViews: [CellView] = []
     private var actions: [CellSelectionAction] = []
-    private(set) var board = Board()
+    var board = Board()
 
     /// セルがタップされたときの挙動を移譲するためのオブジェクトです。
     public weak var delegate: BoardViewDelegate?
@@ -21,6 +21,7 @@ public class BoardView: UIView {
     }
     
     private func setUp() {
+        let board = Board() // 初期化用
         self.backgroundColor = UIColor(named: "DarkColor")!
         
         let cellViews: [CellView] = (0 ..< (Board.width * Board.height)).map { _ in
@@ -78,8 +79,6 @@ public class BoardView: UIView {
             }
         }
         
-        reset()
-        
         for line in board.lines {
             for squire in line {
                 let cellView: CellView = cellViewAt(squire.coordinate)!
@@ -89,9 +88,17 @@ public class BoardView: UIView {
             }
         }
     }
+
+    func configureBoard() {
+        for line in board.lines {
+            for squire in line {
+                setDisk(squire.disk, at: squire.coordinate, animated: false)
+            }
+        }
+    }
     
     /// 盤をゲーム開始時に状態に戻します。このメソッドはアニメーションを伴いません。
-    public func reset() {
+    func reset() {
         for line in board.lines {
             for squire in line {
                 setDisk(nil, at: squire.coordinate, animated: false)

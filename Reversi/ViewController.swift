@@ -22,10 +22,17 @@ class ViewController: UIViewController {
         boardView.delegate = self
         
         do {
-            try loadGame()
+            let board = try game.load()
+            boardView.board = board
+            boardView.configureBoard()
         } catch _ {
-            newGame()
+            self.game = Game()
+            try? game.save(board: boardView.board)
         }
+
+        updateSegmentedControls()
+        updateMessageViews()
+        updateCountLabels()
     }
     
     private var viewHasAppeared: Bool = false
@@ -73,21 +80,7 @@ extension ViewController {
 // MARK: Game management
 
 extension ViewController {
-    /// ゲームの状態を初期化し、新しいゲームを開始します。
-    func newGame() {
-        boardView.reset()
-        game.turn = .dark
-        
-        for playerControl in playerControls {
-            playerControl.selectedSegmentIndex = Player.manual.rawValue
-        }
 
-        updateMessageViews()
-        updateCountLabels()
-        
-        try? saveGame()
-    }
-    
     /// プレイヤーの行動を待ちます。
     func waitForPlayer() {
         guard !game.isOver else { return }
@@ -171,7 +164,7 @@ extension ViewController {
                 cleanUp()
 
                 placeCompletion?()
-                try? self.saveGame()
+                try? self.game.save(board: self.boardView.board)
                 self.updateCountLabels()
             }
         }
@@ -187,6 +180,12 @@ extension ViewController {
     func updateCountLabels() {
         for side in Disk.sides {
             countLabels[side.index].text = "\(boardView.board.countDisks(of: side))"
+        }
+    }
+
+    func updateSegmentedControls() {
+        for (index, playerControl) in game.players.enumerated() {
+            playerControls[index].selectedSegmentIndex = playerControl.rawValue
         }
     }
     
@@ -232,8 +231,13 @@ extension ViewController {
                 self.playerCancellers[side]?.cancel()
                 self.playerCancellers.removeValue(forKey: side)
             }
-            
-            self.newGame()
+
+            self.game = Game()
+            try? self.game.save(board: self.boardView.board)
+            self.updateSegmentedControls()
+            self.updateMessageViews()
+            self.updateCountLabels()
+
             self.waitForPlayer()
         })
         present(alertController, animated: true)
@@ -242,8 +246,9 @@ extension ViewController {
     /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
     @IBAction func changePlayerControlSegment(_ sender: UISegmentedControl) {
         let side: Disk = Disk(index: playerControls.firstIndex(of: sender)!)
-        
-        try? saveGame()
+
+        game.players[side.index] = Player(rawValue: sender.selectedSegmentIndex)!
+        try? game.save(board: boardView.board)
         
         if let canceller = playerCancellers[side] {
             canceller.cancel()
@@ -287,119 +292,9 @@ extension ViewController: BoardViewDelegate {
             cleanUp()
 
             placeCompletion?()
-            try? self.saveGame()
+            try? self.game.save(board: boardView.board)
             self.updateCountLabels()
         }
-    }
-}
-
-// MARK: Save and Load
-
-extension ViewController {
-    private var path: String {
-        (NSSearchPathForDirectoriesInDomains(.libraryDirectory, .userDomainMask, true).first! as NSString).appendingPathComponent("Game")
-    }
-    
-    /// ゲームの状態をファイルに書き出し、保存します。
-    func saveGame() throws {
-        var output: String = ""
-        output += Symbol(disk: game.turn).rawValue
-        for side in Disk.sides {
-            output += playerControls[side.index].selectedSegmentIndex.description
-        }
-        output += "\n"
-        
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let coordinate = Coordinate(x: x, y: y)
-                let disk = boardView.board.disk(at: coordinate)
-                output += Symbol(disk: disk).rawValue
-            }
-            output += "\n"
-        }
-        
-        do {
-            try output.write(toFile: path, atomically: true, encoding: .utf8)
-        } catch let error {
-            throw FileIOError.read(path: path, cause: error)
-        }
-    }
-    
-    /// ゲームの状態をファイルから読み込み、復元します。
-    func loadGame() throws {
-        let input = try String(contentsOfFile: path, encoding: .utf8)
-        var lines: ArraySlice<Substring> = input.split(separator: "\n")[...]
-        
-        guard var line = lines.popFirst() else {
-            throw FileIOError.read(path: path, cause: nil)
-        }
-        
-        do { // turn
-            guard
-                let diskSymbol = line.popFirst()
-            else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            if let disk = Symbol(rawValue: diskSymbol.description)?.disk {
-                game.turn = disk
-            } else {
-                game.isOver = true
-            }
-        }
-
-        // players
-        for side in Disk.sides {
-            guard
-                let playerSymbol = line.popFirst(),
-                let playerNumber = Int(playerSymbol.description),
-                let player = Player(rawValue: playerNumber)
-            else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            playerControls[side.index].selectedSegmentIndex = player.rawValue
-        }
-
-        do { // board
-            guard lines.count == Board.height else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-            
-            var y = 0
-            while let line = lines.popFirst() {
-                var x = 0
-                for character in line {
-                    let symbol = Symbol(rawValue: "\(character)")
-                    let disk = symbol?.disk
-                    let coordinate = Coordinate(x: x, y: y)
-                    boardView.setDisk(disk, at: coordinate, animated: false)
-                    x += 1
-                }
-                guard x == Board.width else {
-                    throw FileIOError.read(path: path, cause: nil)
-                }
-                y += 1
-            }
-            guard y == Board.height else {
-                throw FileIOError.read(path: path, cause: nil)
-            }
-        }
-
-        updateMessageViews()
-        updateCountLabels()
-    }
-    
-    enum FileIOError: Error {
-        case write(path: String, cause: Error?)
-        case read(path: String, cause: Error?)
-    }
-}
-
-// MARK: Additional types
-
-extension ViewController {
-    enum Player: Int {
-        case manual = 0
-        case computer = 1
     }
 }
 
@@ -478,7 +373,3 @@ public struct Coordinate {
     var y: Int
 }
 
-class Game {
-    var isOver = false
-    var turn: Disk = .dark
-}
