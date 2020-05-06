@@ -13,11 +13,7 @@ class ViewController: UIViewController {
     @IBOutlet private weak var lightPlayerActivityIndicator: UIActivityIndicatorView!
 
     private var game = Game()
-    
-    private var animationCanceller: Canceller?
-    private var isAnimating: Bool { animationCanceller != nil }
-    private var darkPlayerCanceller: Canceller?
-    private var lightPlayerCanceller: Canceller?
+    private var isFlipAnimating: Bool = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -94,26 +90,19 @@ extension ViewController {
 
     private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]) -> Void) {
         let coordinate = game.board.validMoves(for: game.turn).randomElement()!
-        let cleanUp: () -> Void = { [weak self] in
-            guard let self = self else { return }
+
+        let playerActivityIndicator: UIActivityIndicatorView = {
             switch turn {
             case .dark:
-                self.darkPlayerCanceller = nil
+                return darkPlayerActivityIndicator
             case .light:
-                self.lightPlayerCanceller = nil
+                return lightPlayerActivityIndicator
             }
-        }
-        let canceller = Canceller(cleanUp)
-        switch turn {
-        case .dark:
-            self.darkPlayerCanceller = canceller
-        case .light:
-            self.lightPlayerCanceller = canceller
-        }
+        }()
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self = self else { return }
-            if canceller.isCancelled { return }
-            cleanUp()
+            guard playerActivityIndicator.isAnimating else { return }
             let disk = turn
             let diskCoordinates = self.game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
             completion([coordinate] + diskCoordinates)
@@ -144,17 +133,13 @@ extension ViewController {
     }
 
     private func flip(disk: Disk, coordinates: [Coordinate], completion: (() -> Void)?) {
-        let cleanUp: () -> Void = { [weak self] in
-            self?.animationCanceller = nil
-        }
-        self.animationCanceller = Canceller(cleanUp)
         let squires = coordinates.map { game.board.lines[$0.y][$0.x] }
-        let animationCanceller = self.animationCanceller!
 
+        self.isFlipAnimating = true
         boardView.setDisks(after: disk, at: squires, animated: true, flippedHandler: nil, completion: { [weak self] in
                 guard let self = self else { return }
-                if animationCanceller.isCancelled { return }
-                cleanUp()
+                guard self.isFlipAnimating else { return }
+                self.isFlipAnimating = false
 
                 self.game.board.setDisks(disk, at: coordinates)
                 try? self.game.save()
@@ -206,14 +191,9 @@ extension ViewController {
         showResetDialog(okHandler: { [weak self] in
             guard let self = self else { return }
 
-            self.animationCanceller?.cancel()
-            self.animationCanceller = nil
-
-            self.darkPlayerCanceller?.cancel()
-            self.darkPlayerCanceller = nil
-
-            self.lightPlayerCanceller?.cancel()
-            self.lightPlayerCanceller = nil
+            self.isFlipAnimating = false
+            self.darkPlayerActivityIndicator.stopAnimating()
+            self.lightPlayerActivityIndicator.stopAnimating()
 
             self.game = Game()
             try? self.game.save()
@@ -228,20 +208,25 @@ extension ViewController {
     @IBAction private func darkPlayerControlValueChanged(_ sender: UISegmentedControl) {
         game.darkPlayer = Player(rawValue: sender.selectedSegmentIndex)!
         try? game.save()
-        self.darkPlayerCanceller?.cancel()
 
+        if darkPlayerActivityIndicator.isAnimating {
+            darkPlayerActivityIndicator.stopAnimating()
+        }
         playerControlValueChangedAction(side: .dark)
     }
 
     @IBAction private func lightPlayerControlValueChanged(_ sender: UISegmentedControl) {
         game.lightPlayer = Player(rawValue: sender.selectedSegmentIndex)!
         try? game.save()
-        self.lightPlayerCanceller?.cancel()
+
+        if lightPlayerActivityIndicator.isAnimating {
+            lightPlayerActivityIndicator.stopAnimating()
+        }
         playerControlValueChangedAction(side: .light)
     }
 
     private func playerControlValueChangedAction(side: Disk) {
-        if !isAnimating, !game.isOver {
+        if !isFlipAnimating, !game.isOver {
             playIfTurnOfComputer(side: side)
         }
     }
@@ -251,7 +236,7 @@ extension ViewController: BoardViewDelegate {
 
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
         let disk = game.turn
-        guard !game.isOver, !isAnimating, case .manual = game.player(turn: disk) else { return }
+        guard !game.isOver, !isFlipAnimating, case .manual = game.player(turn: disk) else { return }
         guard let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate) else { return }
         flip(disk: disk, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()

@@ -20,7 +20,6 @@
 		D642BDDC23AA137C00396732 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D642BDDB23AA137C00396732 /* BoardView.swift */; };
 		F0B5BCB0246108DE00B1B944 /* Board.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B5BCAF246108DE00B1B944 /* Board.swift */; };
 		F0B5BCB224610A0300B1B944 /* Squire.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B5BCB124610A0300B1B944 /* Squire.swift */; };
-		F0CB523A24618E0600D600BE /* Canceler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0CB523924618E0600D600BE /* Canceler.swift */; };
 		F0F3BE162460E2F600F7F42E /* Game.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F3BE152460E2F600F7F42E /* Game.swift */; };
 /* End PBXBuildFile section */
 
@@ -52,7 +51,6 @@
 		D642BDDB23AA137C00396732 /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		F0B5BCAF246108DE00B1B944 /* Board.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Board.swift; sourceTree = "<group>"; };
 		F0B5BCB124610A0300B1B944 /* Squire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Squire.swift; sourceTree = "<group>"; };
-		F0CB523924618E0600D600BE /* Canceler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Canceler.swift; sourceTree = "<group>"; };
 		F0F3BE152460E2F600F7F42E /* Game.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Game.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -129,7 +127,6 @@
 		F0F3BE132460E2B100F7F42E /* Model */ = {
 			isa = PBXGroup;
 			children = (
-				F0CB523924618E0600D600BE /* Canceler.swift */,
 				F0F3BE152460E2F600F7F42E /* Game.swift */,
 				F0B5BCAF246108DE00B1B944 /* Board.swift */,
 				F0B5BCB124610A0300B1B944 /* Squire.swift */,
@@ -251,7 +248,6 @@
 				D636B39F23D35043007F370F /* DiskView.swift in Sources */,
 				D642BDD623AA0B3900396732 /* CellView.swift in Sources */,
 				F0B5BCB224610A0300B1B944 /* Squire.swift in Sources */,
-				F0CB523A24618E0600D600BE /* Canceler.swift in Sources */,
 				D642BDD823AA0B5700396732 /* Disk.swift in Sources */,
 				D642BDB823A9FE4500396732 /* ViewController.swift in Sources */,
 				D642BDDC23AA137C00396732 /* BoardView.swift in Sources */,
