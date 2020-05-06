@@ -14,8 +14,11 @@ enum Player: Int {
 }
 
 enum NextTurn {
+    /// 次の打ち手の番となった
     case change
+    /// 次の打ち手はパス
     case pass
+    /// ゲーム終了
     case gameOver
 }
 
@@ -24,10 +27,11 @@ enum ComputerThinkingError: Error {
 }
 
 class Game {
-    var board = Board()
+    private(set) var board = Board()
 
-    var isOver = false
-    var turn: Disk = .dark
+    /// ゲーム終了状態か
+    private(set) var isOver = false
+    private(set) var turn: Disk = .dark
     var darkPlayer: Player = .manual
     var lightPlayer: Player = .manual
     var isComputerThinking = false
@@ -40,7 +44,8 @@ class Game {
             return lightPlayer
         }
     }
-    
+
+    /// ターンを変更し、次の打ち手のパターンを返す
     func flipTurn() -> NextTurn {
         turn.flip()
         if board.validMoves(for: turn).isEmpty {
@@ -56,11 +61,13 @@ class Game {
         }
     }
 
+    /// コンピュータの実行可能なターンか
     func isComputerTurn(side: Disk? = nil) -> Bool {
         let side = side ?? turn
         return !isOver && side == turn && player(disk: side) == .computer
     }
 
+    /// コンピュータの打ち手の結果を取得
     func getComputerTurnCoordinates(completion: @escaping (Result<[Coordinate], Error>) -> Void) {
         let disk = self.turn
         let coordinate = board.validMoves(for: disk).randomElement()!

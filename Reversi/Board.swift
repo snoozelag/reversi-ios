@@ -54,16 +54,13 @@ public class Board {
     /// - Returns: `side` で指定された色のディスクの、盤上の枚数です。
     func countDisks(of side: Disk) -> Int {
         var count = 0
-
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let coordinate = Coordinate(x: x, y: y)
-                if disk(at: coordinate) == side {
+        for line in lines {
+            for squire in line {
+                if squire.disk == side {
                     count +=  1
                 }
             }
         }
-
         return count
     }
 
@@ -123,34 +120,22 @@ public class Board {
         return diskCoordinates.isEmpty ? nil : diskCoordinates
     }
 
-    /// `x`, `y` で指定されたセルに、 `disk` が置けるかを調べます。
-    /// ディスクを置くためには、少なくとも 1 枚のディスクをひっくり返せる必要があります。
-    /// - Parameter x: セルの列です。
-    /// - Parameter y: セルの行です。
-    /// - Returns: 指定されたセルに `disk` を置ける場合は `true` を、置けない場合は `false` を返します。
-    func canPlaceDisk(_ disk: Disk, at coordinate: Coordinate) -> Bool {
-        return flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate) != nil
-    }
-
     /// `side` で指定された色のディスクを置ける盤上のセルの座標をすべて返します。
     /// - Returns: `side` で指定された色のディスクを置ける盤上のすべてのセルの座標の配列です。
     func validMoves(for side: Disk) -> [Coordinate] {
         var coordinates: [Coordinate] = []
-
-        for y in (0..<Board.height) {
-            for x in (0..<Board.width) {
-                let coordinate = Coordinate(x: x, y: y)
-                let canPlaceDisk = (flippedDiskCoordinates(by: side, at: coordinate) != nil)
+        for line in lines {
+            for squire in line {
+                let canPlaceDisk = (flippedDiskCoordinates(by: side, at: squire.coordinate) != nil)
                 if canPlaceDisk {
-                    coordinates.append(coordinate)
+                    coordinates.append(squire.coordinate)
                 }
             }
         }
-
         return coordinates
     }
 
-    /// 盤をゲーム開始時に状態に戻します。このメソッドはアニメーションを伴いません。
+    /// 盤をゲーム開始時に状態に戻します。
     func reset() {
         for line in lines {
             for squire in line {
