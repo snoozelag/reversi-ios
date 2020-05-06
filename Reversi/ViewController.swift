@@ -232,7 +232,7 @@ class ViewController: UIViewController {
 extension ViewController: BoardViewDelegate {
 
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
-        guard !game.isComputerTurn(), let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(game.turn, at: coordinate) else { return }
+        guard !game.isComputerTurn(), let diskCoordinates = game.board.flippedDiskCoordinates(by: game.turn, at: coordinate) else { return }
         flip(disk: game.turn, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()
         }

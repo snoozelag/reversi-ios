@@ -69,7 +69,7 @@ class Game {
             guard let self = self else { return }
             if self.isComputerThinking {
                 self.isComputerThinking = false
-                let diskCoordinates = self.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
+                let diskCoordinates = self.board.flippedDiskCoordinates(by: disk, at: coordinate)!
                 completion(.success([coordinate] + diskCoordinates))
             } else {
                 completion(.failure(ComputerThinkingError.cancel))

@@ -80,7 +80,7 @@ public class Board {
         }
     }
 
-    func flippedDiskCoordinatesByPlacingDisk(_ disk: Disk, at coordinate: Coordinate) -> [Coordinate]? {
+    func flippedDiskCoordinates(by placingDisk: Disk, at coordinate: Coordinate) -> [Coordinate]? {
 
         guard self.disk(at: coordinate) == nil else {
             return nil
@@ -108,7 +108,7 @@ public class Board {
                 x += direction.x
                 y += direction.y
 
-                switch (disk, self.disk(at: Coordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
+                switch (placingDisk, self.disk(at: Coordinate(x: x, y: y))) { // Uses tuples to make patterns exhaustive
                 case (.dark, .some(.dark)), (.light, .some(.light)):
                     diskCoordinates.append(contentsOf: diskCoordinatesInLine)
                     break flipping
@@ -140,7 +140,8 @@ public class Board {
         for y in (0..<Board.height) {
             for x in (0..<Board.width) {
                 let coordinate = Coordinate(x: x, y: y)
-                if canPlaceDisk(side, at: coordinate) {
+                let canPlaceDisk = (flippedDiskCoordinates(by: side, at: coordinate) != nil)
+                if canPlaceDisk {
                     coordinates.append(coordinate)
                 }
             }
