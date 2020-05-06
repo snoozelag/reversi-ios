@@ -163,9 +163,3 @@ public class Board {
         setDisk(.light, at: Coordinate(x: Board.width / 2, y: Board.height / 2))
     }
 }
-
-struct DiskPlacementError: Error {
-    let disk: Disk
-    let x: Int
-    let y: Int
-}

@@ -17,9 +17,7 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        boardView.delegate = self
-        
+
         do {
             try game.load()
         } catch _ {
@@ -27,7 +25,9 @@ class ViewController: UIViewController {
             try? game.save()
         }
 
+        boardView.delegate = self
         boardView.configure(board: game.board)
+
         updateSegmentedControls()
         updateMessageViews()
         updateCountLabels()
@@ -37,9 +37,12 @@ class ViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        if viewHasAppeared { return }
-        viewHasAppeared = true
-        playIfTurnOfComputer(side: game.turn)
+        if !viewHasAppeared {
+            viewHasAppeared = true
+            if game.isComputerTurn() {
+                playOfComputer()
+            }
+        }
     }
 
     private func playerActivityIndicator(side: Disk) -> UIActivityIndicatorView {
@@ -73,51 +76,47 @@ class ViewController: UIViewController {
         })
         present(alertController, animated: true)
     }
-}
 
-// MARK: Game management
-
-extension ViewController {
+    // MARK: - Game management
 
     private func nextTurn() {
         switch game.flipTurn() {
         case .change:
-            playIfTurnOfComputer(side: game.turn)
+            if game.isComputerTurn() {
+                playOfComputer()
+            }
+            updateMessageViewsForTurn(game.turn)
         case .pass:
             showPassDialog(dismissHandler: { [weak self] in
                 self?.nextTurn()
             })
+            updateMessageViewsForTurn(game.turn)
         case .gameOver:
-            break
-        }
-        updateMessageViews()
-    }
-
-    private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]) -> Void) {
-        let coordinate = game.board.validMoves(for: game.turn).randomElement()!
-        let playerActivityIndicator = self.playerActivityIndicator(side: turn)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            guard let self = self else { return }
-            guard playerActivityIndicator.isAnimating else { return }
-            let disk = turn
-            let diskCoordinates = self.game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
-            completion([coordinate] + diskCoordinates)
+            if let winner = game.board.sideWithMoreDisks() {
+                updateMessageViewsForWinner(winner)
+            } else {
+                updateMessageViewsForTide()
+            }
         }
     }
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
-    private func playIfTurnOfComputer(side: Disk) {
-        guard !game.isOver else { return }
-        guard side == game.turn, game.player(disk: side) == .computer else { return }
-
+    private func playOfComputer() {
+        let side = game.turn
         let playerActivityIndicator = self.playerActivityIndicator(side: side)
         playerActivityIndicator.startAnimating()
-        getComputerTurnCoordinates(turn: side, completion: { [weak self] coordinates in
-            playerActivityIndicator.stopAnimating()
-            self?.flip(disk: side, coordinates: coordinates, completion: {
-                self?.nextTurn()
-            })
-        })
+        game.getComputerTurnCoordinates() { [weak self] result in
+            switch result {
+            case .success(let coordinates):
+                playerActivityIndicator.stopAnimating()
+                guard let self = self else { return }
+                self.flip(disk: side, coordinates: coordinates) {
+                    self.nextTurn()
+                }
+            case .failure:
+                break
+            }
+        }
     }
 
     private func flip(disk: Disk, coordinates: [Coordinate], completion: (() -> Void)?) {
@@ -136,11 +135,9 @@ extension ViewController {
                 completion?()
         })
     }
-}
 
-// MARK: Views
+    // MARK: - Views
 
-extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
     private func updateCountLabels() {
         darkCountLabel.text = "\(game.board.countDisks(of: .dark))"
@@ -151,29 +148,38 @@ extension ViewController {
         darkPlayerControl.selectedSegmentIndex = game.darkPlayer.rawValue
         lightPlayerControl.selectedSegmentIndex = game.lightPlayer.rawValue
     }
-    
+
     /// 現在の状況に応じてメッセージを表示します。
     private func updateMessageViews() {
         if game.isOver {
             if let winner = game.board.sideWithMoreDisks() {
-                messageDiskView.isHidden = false
-                messageDiskView.configure(disk: winner)
-                messageLabel.text = " won"
+                updateMessageViewsForWinner(winner)
             } else {
-                messageDiskView.isHidden = true
-                messageLabel.text = "Tied"
+                updateMessageViewsForTide()
             }
         } else {
-            messageDiskView.isHidden = false
-            messageDiskView.configure(disk: game.turn)
-            messageLabel.text = "'s turn"
+            updateMessageViewsForTurn(game.turn)
         }
     }
-}
 
-// MARK: Inputs
+    private func updateMessageViewsForTide() {
+        messageDiskView.isHidden = true
+        messageLabel.text = "Tied"
+    }
 
-extension ViewController {
+    private func updateMessageViewsForTurn(_ side: Disk) {
+        messageDiskView.isHidden = false
+        messageDiskView.configure(disk: side)
+        messageLabel.text = "'s turn"
+    }
+
+    private func updateMessageViewsForWinner(_ winner: Disk) {
+        messageDiskView.isHidden = false
+        messageDiskView.configure(disk: winner)
+        messageLabel.text = " won"
+    }
+
+    // MARK: - Inputs
 
     @IBAction private func pressResetButton(_ sender: UIButton) {
         showResetDialog(okHandler: { [weak self] in
@@ -187,9 +193,11 @@ extension ViewController {
             try? self.game.save()
             self.boardView.configure(board: self.game.board)
             self.updateSegmentedControls()
-            self.updateMessageViews()
+            self.updateMessageViewsForTurn(self.game.turn)
             self.updateCountLabels()
-            self.playIfTurnOfComputer(side: self.game.turn)
+            if self.game.isComputerTurn() {
+                self.playOfComputer()
+            }
         })
     }
 
@@ -199,9 +207,10 @@ extension ViewController {
 
         if darkPlayerActivityIndicator.isAnimating {
             darkPlayerActivityIndicator.stopAnimating()
+            game.isComputerThinking = false
         }
-        if !isFlipAnimating, !game.isOver {
-            playIfTurnOfComputer(side: .dark)
+        if game.isComputerTurn(side: .dark) {
+            playOfComputer()
         }
     }
 
@@ -211,9 +220,11 @@ extension ViewController {
 
         if lightPlayerActivityIndicator.isAnimating {
             lightPlayerActivityIndicator.stopAnimating()
+            game.isComputerThinking = false
         }
-        if !isFlipAnimating, !game.isOver {
-            playIfTurnOfComputer(side: .light)
+
+        if game.isComputerTurn(side: .light) {
+            playOfComputer()
         }
     }
 }
@@ -221,8 +232,7 @@ extension ViewController {
 extension ViewController: BoardViewDelegate {
 
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
-        guard !game.isOver, !isFlipAnimating, game.player(disk: game.turn) == .manual else { return }
-        guard let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(game.turn, at: coordinate) else { return }
+        guard !game.isComputerTurn(), let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(game.turn, at: coordinate) else { return }
         flip(disk: game.turn, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()
         }

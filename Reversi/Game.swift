@@ -19,12 +19,18 @@ enum NextTurn {
     case gameOver
 }
 
+enum ComputerThinkingError: Error {
+    case cancel
+}
+
 class Game {
+    var board = Board()
+
     var isOver = false
     var turn: Disk = .dark
     var darkPlayer: Player = .manual
     var lightPlayer: Player = .manual
-    var board = Board()
+    var isComputerThinking = false
 
     func player(disk: Disk) -> Player {
         switch turn {
@@ -47,6 +53,27 @@ class Game {
             }
         } else {
             return .change
+        }
+    }
+
+    func isComputerTurn(side: Disk? = nil) -> Bool {
+        let side = side ?? turn
+        return !isOver && side == turn && player(disk: side) == .computer
+    }
+
+    func getComputerTurnCoordinates(completion: @escaping (Result<[Coordinate], Error>) -> Void) {
+        let disk = self.turn
+        let coordinate = board.validMoves(for: disk).randomElement()!
+        isComputerThinking = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self else { return }
+            if self.isComputerThinking {
+                self.isComputerThinking = false
+                let diskCoordinates = self.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate)!
+                completion(.success([coordinate] + diskCoordinates))
+            } else {
+                completion(.failure(ComputerThinkingError.cancel))
+            }
         }
     }
 }
