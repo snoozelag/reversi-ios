@@ -26,7 +26,7 @@ class Game {
     var lightPlayer: Player = .manual
     var board = Board()
 
-    func player(turn: Disk) -> Player {
+    func player(disk: Disk) -> Player {
         switch turn {
         case .dark:
             return darkPlayer

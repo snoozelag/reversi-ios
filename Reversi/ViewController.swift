@@ -42,6 +42,11 @@ class ViewController: UIViewController {
         playIfTurnOfComputer(side: game.turn)
     }
 
+    private func playerActivityIndicator(side: Disk) -> UIActivityIndicatorView {
+        let indicators = [Disk.dark: darkPlayerActivityIndicator!, Disk.light: lightPlayerActivityIndicator!]
+        return indicators[side]!
+    }
+
     // MARK: - Alert
 
     private func showResetDialog(okHandler: @escaping () -> Void) {
@@ -90,16 +95,7 @@ extension ViewController {
 
     private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]) -> Void) {
         let coordinate = game.board.validMoves(for: game.turn).randomElement()!
-
-        let playerActivityIndicator: UIActivityIndicatorView = {
-            switch turn {
-            case .dark:
-                return darkPlayerActivityIndicator
-            case .light:
-                return lightPlayerActivityIndicator
-            }
-        }()
-
+        let playerActivityIndicator = self.playerActivityIndicator(side: turn)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self = self else { return }
             guard playerActivityIndicator.isAnimating else { return }
@@ -112,17 +108,9 @@ extension ViewController {
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
     private func playIfTurnOfComputer(side: Disk) {
         guard !game.isOver else { return }
-        guard side == game.turn, game.player(turn: side) == .computer else { return }
+        guard side == game.turn, game.player(disk: side) == .computer else { return }
 
-        let playerActivityIndicator: UIActivityIndicatorView = {
-            switch side {
-            case .dark:
-                return darkPlayerActivityIndicator
-            case .light:
-                return lightPlayerActivityIndicator
-            }
-        }()
-
+        let playerActivityIndicator = self.playerActivityIndicator(side: side)
         playerActivityIndicator.startAnimating()
         getComputerTurnCoordinates(turn: side, completion: { [weak self] coordinates in
             playerActivityIndicator.stopAnimating()
@@ -212,7 +200,9 @@ extension ViewController {
         if darkPlayerActivityIndicator.isAnimating {
             darkPlayerActivityIndicator.stopAnimating()
         }
-        playerControlValueChangedAction(side: .dark)
+        if !isFlipAnimating, !game.isOver {
+            playIfTurnOfComputer(side: .dark)
+        }
     }
 
     @IBAction private func lightPlayerControlValueChanged(_ sender: UISegmentedControl) {
@@ -222,12 +212,8 @@ extension ViewController {
         if lightPlayerActivityIndicator.isAnimating {
             lightPlayerActivityIndicator.stopAnimating()
         }
-        playerControlValueChangedAction(side: .light)
-    }
-
-    private func playerControlValueChangedAction(side: Disk) {
         if !isFlipAnimating, !game.isOver {
-            playIfTurnOfComputer(side: side)
+            playIfTurnOfComputer(side: .light)
         }
     }
 }
@@ -235,10 +221,9 @@ extension ViewController {
 extension ViewController: BoardViewDelegate {
 
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
-        let disk = game.turn
-        guard !game.isOver, !isFlipAnimating, case .manual = game.player(turn: disk) else { return }
-        guard let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate) else { return }
-        flip(disk: disk, coordinates: [coordinate] + diskCoordinates) { [weak self] in
+        guard !game.isOver, !isFlipAnimating, game.player(disk: game.turn) == .manual else { return }
+        guard let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(game.turn, at: coordinate) else { return }
+        flip(disk: game.turn, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()
         }
     }
