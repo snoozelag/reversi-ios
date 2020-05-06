@@ -22,14 +22,25 @@ enum NextTurn {
 class Game {
     var isOver = false
     var turn: Disk = .dark
-    var players: [Player] = [.manual, .manual]
+    var darkPlayer: Player = .manual
+    var lightPlayer: Player = .manual
     var board = Board()
 
+    func player(turn: Disk) -> Player {
+        switch turn {
+        case .dark:
+            return darkPlayer
+        case .light:
+            return lightPlayer
+        }
+    }
+    
     func flipTurn() -> NextTurn {
         turn.flip()
         if board.validMoves(for: turn).isEmpty {
             if board.validMoves(for: turn.flipped).isEmpty {
                 isOver = true
+                try? save()
                 return .gameOver
             } else {
                 return .pass
@@ -51,10 +62,9 @@ extension Game {
     /// ゲームの状態をファイルに書き出し、保存します。
     func save() throws {
         var output: String = ""
-        output += Symbol(disk: turn).rawValue
-        for side in Disk.sides {
-            output += players[side.index].rawValue.description
-        }
+        output += isOver ? Symbol.none.rawValue : Symbol(disk: turn).rawValue
+        output += darkPlayer.rawValue.description
+        output += lightPlayer.rawValue.description
         output += "\n"
 
         for y in (0..<Board.height) {
@@ -96,7 +106,7 @@ extension Game {
         }
 
         // players
-        for side in Disk.sides {
+        let players = try Disk.sides.reduce(into: [Player](), { result, side in
             guard
                 let playerSymbol = line.popFirst(),
                 let playerNumber = Int(playerSymbol.description),
@@ -104,10 +114,13 @@ extension Game {
                 else {
                     throw FileIOError.read(path: path, cause: nil)
             }
-            players[side.index] = player
-        }
+            result.append(player)
+        })
 
-        let loadingBoard = Board()
+        self.darkPlayer = players[0]
+        self.lightPlayer = players[1]
+
+        let resultBoard = Board()
         do { // board
             guard lines.count == Board.height else {
                 throw FileIOError.read(path: path, cause: nil)
@@ -120,7 +133,7 @@ extension Game {
                     let symbol = Symbol(rawValue: "\(character)")
                     let disk = symbol?.disk
                     let coordinate = Coordinate(x: x, y: y)
-                    loadingBoard.setDisk(disk, at: coordinate)
+                    resultBoard.setDisk(disk, at: coordinate)
                     x += 1
                 }
                 guard x == Board.width else {
@@ -132,7 +145,7 @@ extension Game {
                 throw FileIOError.read(path: path, cause: nil)
             }
         }
-        self.board = loadingBoard
+        self.board = resultBoard
     }
 
     enum FileIOError: Error {

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="16096" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="16097" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
     <device id="retina6_1" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="16087"/>
@@ -78,7 +78,7 @@
                                             <segment title="Computer"/>
                                         </segments>
                                         <connections>
-                                            <action selector="changePlayerControlSegment:" destination="BYZ-38-t0r" eventType="valueChanged" id="f7K-Cm-17Z"/>
+                                            <action selector="darkPlayerControlValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="JhK-aR-q1t"/>
                                         </connections>
                                     </segmentedControl>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="NGE-KP-oHh">
@@ -125,7 +125,7 @@
                                             <segment title="Computer"/>
                                         </segments>
                                         <connections>
-                                            <action selector="changePlayerControlSegment:" destination="BYZ-38-t0r" eventType="valueChanged" id="9el-1b-nyF"/>
+                                            <action selector="lightPlayerControlValueChanged:" destination="BYZ-38-t0r" eventType="valueChanged" id="iPN-bh-bZ8"/>
                                         </connections>
                                     </segmentedControl>
                                     <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="0" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="IMh-5o-Uqc">
@@ -182,14 +182,14 @@
                     </view>
                     <connections>
                         <outlet property="boardView" destination="zq8-hK-TyQ" id="7Tx-KA-DlY"/>
+                        <outlet property="darkCountLabel" destination="NGE-KP-oHh" id="rqX-XR-gEw"/>
+                        <outlet property="darkPlayerActivityIndicator" destination="VTM-mY-aFg" id="89d-a2-Rjx"/>
+                        <outlet property="darkPlayerControl" destination="Nf5-NH-Aql" id="ggu-ZF-rEH"/>
+                        <outlet property="lightCountLabel" destination="IMh-5o-Uqc" id="MYU-PT-vfv"/>
+                        <outlet property="lightPlayerActivityIndicator" destination="ufC-w0-Xwz" id="HSJ-bh-o03"/>
+                        <outlet property="lightPlayerControl" destination="q90-VO-j8m" id="M4e-z5-adN"/>
                         <outlet property="messageDiskView" destination="xhS-zB-FaD" id="Cel-dc-EWk"/>
                         <outlet property="messageLabel" destination="nHv-pJ-hrU" id="bqV-9P-ADo"/>
-                        <outletCollection property="countLabels" destination="NGE-KP-oHh" collectionClass="NSMutableArray" id="aJN-mC-RHo"/>
-                        <outletCollection property="countLabels" destination="IMh-5o-Uqc" collectionClass="NSMutableArray" id="XJm-Mh-BhF"/>
-                        <outletCollection property="playerActivityIndicators" destination="VTM-mY-aFg" collectionClass="NSMutableArray" id="Ale-OR-NEC"/>
-                        <outletCollection property="playerActivityIndicators" destination="ufC-w0-Xwz" collectionClass="NSMutableArray" id="jdu-St-za6"/>
-                        <outletCollection property="playerControls" destination="Nf5-NH-Aql" collectionClass="NSMutableArray" id="Ck1-BI-rSv"/>
-                        <outletCollection property="playerControls" destination="q90-VO-j8m" collectionClass="NSMutableArray" id="RQh-tl-TQr"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>

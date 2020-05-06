@@ -2,18 +2,22 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    @IBOutlet private var boardView: BoardView!
-    @IBOutlet private var messageDiskView: DiskView!
-    @IBOutlet private var messageLabel: UILabel!
-    @IBOutlet private var playerControls: [UISegmentedControl]!
-    @IBOutlet private var countLabels: [UILabel]!
-    @IBOutlet private var playerActivityIndicators: [UIActivityIndicatorView]!
+    @IBOutlet private weak var boardView: BoardView!
+    @IBOutlet private weak var messageDiskView: DiskView!
+    @IBOutlet private weak var messageLabel: UILabel!
+    @IBOutlet private weak var darkPlayerControl: UISegmentedControl!
+    @IBOutlet private weak var lightPlayerControl: UISegmentedControl!
+    @IBOutlet private weak var darkCountLabel: UILabel!
+    @IBOutlet private weak var lightCountLabel: UILabel!
+    @IBOutlet private weak var darkPlayerActivityIndicator: UIActivityIndicatorView!
+    @IBOutlet private weak var lightPlayerActivityIndicator: UIActivityIndicatorView!
 
     private var game = Game()
     
     private var animationCanceller: Canceller?
     private var isAnimating: Bool { animationCanceller != nil }
-    private var playerCancellers: [Disk: Canceller] = [:]
+    private var darkPlayerCanceller: Canceller?
+    private var lightPlayerCanceller: Canceller?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,7 +43,7 @@ class ViewController: UIViewController {
         
         if viewHasAppeared { return }
         viewHasAppeared = true
-        playIfTurnOfComputer(playerIndex: game.turn.index)
+        playIfTurnOfComputer(side: game.turn)
     }
 
     // MARK: - Alert
@@ -74,10 +78,10 @@ class ViewController: UIViewController {
 
 extension ViewController {
 
-    func nextTurn() {
+    private func nextTurn() {
         switch game.flipTurn() {
         case .change:
-            playIfTurnOfComputer(playerIndex: game.turn.index)
+            playIfTurnOfComputer(side: game.turn)
         case .pass:
             showPassDialog(dismissHandler: { [weak self] in
                 self?.nextTurn()
@@ -89,15 +93,23 @@ extension ViewController {
     }
 
     private func getComputerTurnCoordinates(turn: Disk, completion: @escaping ([Coordinate]) -> Void) {
-        playerActivityIndicators[game.turn.index].startAnimating()
         let coordinate = game.board.validMoves(for: game.turn).randomElement()!
         let cleanUp: () -> Void = { [weak self] in
             guard let self = self else { return }
-            self.playerCancellers[turn] = nil
-            self.playerActivityIndicators[turn.index].stopAnimating()
+            switch turn {
+            case .dark:
+                self.darkPlayerCanceller = nil
+            case .light:
+                self.lightPlayerCanceller = nil
+            }
         }
         let canceller = Canceller(cleanUp)
-        playerCancellers[turn] = canceller
+        switch turn {
+        case .dark:
+            self.darkPlayerCanceller = canceller
+        case .light:
+            self.lightPlayerCanceller = canceller
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
             guard let self = self else { return }
             if canceller.isCancelled { return }
@@ -109,13 +121,23 @@ extension ViewController {
     }
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
-    func playIfTurnOfComputer(playerIndex: Int) {
-        let turn = game.turn
-        guard turn.index == playerIndex, case .computer = game.players[playerIndex] else { return }
-        guard !game.isOver else { preconditionFailure() }
+    private func playIfTurnOfComputer(side: Disk) {
+        guard !game.isOver else { return }
+        guard side == game.turn, game.player(turn: side) == .computer else { return }
 
-        getComputerTurnCoordinates(turn: turn, completion: { [weak self] coordinates in
-            self?.flip(disk: turn, coordinates: coordinates, completion: {
+        let playerActivityIndicator: UIActivityIndicatorView = {
+            switch side {
+            case .dark:
+                return darkPlayerActivityIndicator
+            case .light:
+                return lightPlayerActivityIndicator
+            }
+        }()
+
+        playerActivityIndicator.startAnimating()
+        getComputerTurnCoordinates(turn: side, completion: { [weak self] coordinates in
+            playerActivityIndicator.stopAnimating()
+            self?.flip(disk: side, coordinates: coordinates, completion: {
                 self?.nextTurn()
             })
         })
@@ -129,7 +151,7 @@ extension ViewController {
         let squires = coordinates.map { game.board.lines[$0.y][$0.x] }
         let animationCanceller = self.animationCanceller!
 
-        boardView.setDisks(after: disk, at: squires, animated: false, flippedHandler: nil, completion: { [weak self] in
+        boardView.setDisks(after: disk, at: squires, animated: true, flippedHandler: nil, completion: { [weak self] in
                 guard let self = self else { return }
                 if animationCanceller.isCancelled { return }
                 cleanUp()
@@ -147,20 +169,18 @@ extension ViewController {
 
 extension ViewController {
     /// 各プレイヤーの獲得したディスクの枚数を表示します。
-    func updateCountLabels() {
-        for side in Disk.sides {
-            countLabels[side.index].text = "\(game.board.countDisks(of: side))"
-        }
+    private func updateCountLabels() {
+        darkCountLabel.text = "\(game.board.countDisks(of: .dark))"
+        lightCountLabel.text = "\(game.board.countDisks(of: .light))"
     }
 
-    func updateSegmentedControls() {
-        for (index, playerControl) in game.players.enumerated() {
-            playerControls[index].selectedSegmentIndex = playerControl.rawValue
-        }
+    private func updateSegmentedControls() {
+        darkPlayerControl.selectedSegmentIndex = game.darkPlayer.rawValue
+        lightPlayerControl.selectedSegmentIndex = game.lightPlayer.rawValue
     }
     
     /// 現在の状況に応じてメッセージを表示します。
-    func updateMessageViews() {
+    private func updateMessageViews() {
         if game.isOver {
             if let winner = game.board.sideWithMoreDisks() {
                 messageDiskView.isHidden = false
@@ -182,17 +202,18 @@ extension ViewController {
 
 extension ViewController {
 
-    @IBAction func pressResetButton(_ sender: UIButton) {
+    @IBAction private func pressResetButton(_ sender: UIButton) {
         showResetDialog(okHandler: { [weak self] in
             guard let self = self else { return }
 
             self.animationCanceller?.cancel()
             self.animationCanceller = nil
 
-            for side in Disk.sides {
-                self.playerCancellers[side]?.cancel()
-                self.playerCancellers.removeValue(forKey: side)
-            }
+            self.darkPlayerCanceller?.cancel()
+            self.darkPlayerCanceller = nil
+
+            self.lightPlayerCanceller?.cancel()
+            self.lightPlayerCanceller = nil
 
             self.game = Game()
             try? self.game.save()
@@ -200,23 +221,28 @@ extension ViewController {
             self.updateSegmentedControls()
             self.updateMessageViews()
             self.updateCountLabels()
-            self.playIfTurnOfComputer(playerIndex: self.game.turn.index)
+            self.playIfTurnOfComputer(side: self.game.turn)
         })
     }
 
-    /// プレイヤーのモードが変更された場合に呼ばれるハンドラーです。
-    @IBAction func changePlayerControlSegment(_ sender: UISegmentedControl) {
-        let side = Disk(index: playerControls.firstIndex(of: sender)!)
-        game.players[side.index] = Player(rawValue: sender.selectedSegmentIndex)!
-
+    @IBAction private func darkPlayerControlValueChanged(_ sender: UISegmentedControl) {
+        game.darkPlayer = Player(rawValue: sender.selectedSegmentIndex)!
         try? game.save()
+        self.darkPlayerCanceller?.cancel()
 
-        if let canceller = playerCancellers[side] {
-            canceller.cancel()
-        }
+        playerControlValueChangedAction(side: .dark)
+    }
 
+    @IBAction private func lightPlayerControlValueChanged(_ sender: UISegmentedControl) {
+        game.lightPlayer = Player(rawValue: sender.selectedSegmentIndex)!
+        try? game.save()
+        self.lightPlayerCanceller?.cancel()
+        playerControlValueChangedAction(side: .light)
+    }
+
+    private func playerControlValueChangedAction(side: Disk) {
         if !isAnimating, !game.isOver {
-            playIfTurnOfComputer(playerIndex: side.index)
+            playIfTurnOfComputer(side: side)
         }
     }
 }
@@ -225,31 +251,10 @@ extension ViewController: BoardViewDelegate {
 
     func boardView(_ boardView: BoardView, didSelectCellAt coordinate: Coordinate) {
         let disk = game.turn
-        guard !game.isOver, !isAnimating, case .manual = game.players[disk.index] else { return }
+        guard !game.isOver, !isAnimating, case .manual = game.player(turn: disk) else { return }
         guard let diskCoordinates = game.board.flippedDiskCoordinatesByPlacingDisk(disk, at: coordinate) else { return }
         flip(disk: disk, coordinates: [coordinate] + diskCoordinates) { [weak self] in
             self?.nextTurn()
-        }
-    }
-}
-
-// MARK: File-private extensions
-
-extension Disk {
-    init(index: Int) {
-        for side in Disk.sides {
-            if index == side.index {
-                self = side
-                return
-            }
-        }
-        preconditionFailure("Illegal index: \(index)")
-    }
-    
-    var index: Int {
-        switch self {
-        case .dark: return 0
-        case .light: return 1
         }
     }
 }
