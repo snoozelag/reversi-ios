@@ -98,6 +98,7 @@ class ViewController: UIViewController {
                 updateMessageViewsForTide()
             }
         }
+        try? self.game.save()
     }
     
     /// "Computer" が選択されている場合のプレイヤーの行動を決定します。
@@ -129,7 +130,6 @@ class ViewController: UIViewController {
                 self.isFlipAnimating = false
 
                 self.game.board.setDisks(disk, at: coordinates)
-                try? self.game.save()
                 self.updateCountLabels()
 
                 completion?()
