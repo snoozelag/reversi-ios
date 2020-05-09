@@ -5,10 +5,6 @@ public class CellView: UIView {
     let diskView: DiskView = DiskView()
     
     private var disk: Disk?
-
-    func configure(disk: Disk?) {
-        self.disk = disk
-    }
     
     override public init(frame: CGRect) {
         super.init(frame: frame)
@@ -45,12 +41,17 @@ public class CellView: UIView {
 
         setNeedsLayout()
     }
-    
+
+    public func setDisk(after: Disk?, before: Disk?, at coordinate: Coordinate, animated: Bool, completion: ((Coordinate, Bool) -> Void)? = nil) {
+        self.disk = after
+        diskView.setDisk(after: after, before: before, at: coordinate, animated: animated, completion: completion)
+    }
+
     public override func layoutSubviews() {
         super.layoutSubviews()
         
         button.frame = bounds
-        diskView.layout(cellSize: bounds.size, cellDisk: self.disk)
+        diskView.layout(disk: self.disk)
     }
     
     public func addTarget(_ target: Any?, action: Selector, for controlEvents: UIControl.Event) {

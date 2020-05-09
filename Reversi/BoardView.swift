@@ -91,7 +91,8 @@ public class BoardView: UIView {
     func configure(board: Board) {
         for line in board.lines {
             for squire in line {
-                setDisk(after: squire.disk, before: nil, at: squire.coordinate, animated: false)
+                let cellView = cellViewAt(squire.coordinate)!
+                cellView.setDisk(after: squire.disk, before: nil, at: squire.coordinate, animated: false)
             }
         }
     }
@@ -108,7 +109,8 @@ public class BoardView: UIView {
             return
         }
 
-        setDisk(after: after, before: squire.disk, at: squire.coordinate, animated: animated) { [weak self] coordinate, isFinished in
+        let cellView = cellViewAt(squire.coordinate)!
+        cellView.setDisk(after: after, before: squire.disk, at: squire.coordinate, animated: animated) { [weak self] coordinate, isFinished in
             guard let self = self else { return }
 
             if isFinished {
@@ -116,54 +118,10 @@ public class BoardView: UIView {
                 self.setDisks(after: after, at: squires.dropFirst(), animated: animated, flippedHandler: flippedHandler, completion: completion)
             } else {
                 for squire in squires {
-                    self.setDisk(after: after, before: squire.disk, at: squire.coordinate, animated: false)
+                    cellView.setDisk(after: after, before: squire.disk, at: squire.coordinate, animated: false)
                 }
                 completion?()
             }
-        }
-    }
-
-    public func setDisk(after: Disk?, before: Disk?, at coordinate: Coordinate, animated: Bool, completion: ((Coordinate, Bool) -> Void)? = nil) {
-        guard let cellView = cellViewAt(coordinate) else {
-            // FIXME: Add a message.
-            preconditionFailure()
-        }
-        cellView.configure(disk: after)
-        if animated {
-            switch (before, after) {
-            case (.none, .none):
-                completion?(coordinate, true)
-            case (.none, .some(let animationDisk)):
-                cellView.diskView.configure(disk: animationDisk)
-                fallthrough
-            case (.some, .none):
-                let animationDuration: TimeInterval = 0.25
-                UIView.animate(withDuration: animationDuration, delay: 0, options: .curveEaseIn, animations: {
-                    cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: after)
-                }, completion: { finished in
-                    completion?(coordinate, finished)
-                })
-            case (.some(let before), .some(let after)):
-                let animationDuration: TimeInterval = 0.25
-                UIView.animate(withDuration: animationDuration / 2, delay: 0, options: .curveEaseOut, animations: {
-                    cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: after)
-                }, completion: { finished in
-                    if before == after {
-                        completion?(coordinate, finished)
-                    }
-                    cellView.diskView.configure(disk: after)
-                    UIView.animate(withDuration: animationDuration / 2, animations: {
-                        cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: after)
-                    }, completion: { finished in
-                        completion?(coordinate, finished)
-                    })
-                })
-            }
-        } else {
-            cellView.diskView.configure(disk: after)
-            cellView.diskView.layout(cellSize: cellView.bounds.size, cellDisk: after)
-            completion?(coordinate, true)
-            setNeedsLayout()
         }
     }
 }
